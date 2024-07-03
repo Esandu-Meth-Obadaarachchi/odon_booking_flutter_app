@@ -13,46 +13,59 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('Hotel Room Booking'),
+        title: const Text(
+            'Hotel Room Booking',
+          style:
+          color: Colors.white, // Set the title text color to white
+          fontFamily: 'CustomFont', // Set the custom font family
+          fontWeight: FontWeight.bold, // Set the font weight if needed
+        ),
         backgroundColor: Colors.indigo,
-
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-
           children: [
-
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => RoomSelectionScreen(floor: 'Ground Floor', rooms: 5, startingRoomNumber: 1)),
+                  MaterialPageRoute(
+                    builder: (context) => RoomSelectionScreen(
+                      floor: 'Ground Floor',
+                      rooms: 5,
+                      startingRoomNumber: 1,
+                    ),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.red, // foreground
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.red, // foreground
               ),
               child: const Text('Ground Floor'),
             ),
-
-            const SizedBox(height: 20,width: 30),
-
+            const SizedBox(height: 20, width: 30),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => RoomSelectionScreen(floor: 'First Floor', rooms: 7, startingRoomNumber: 101)),
+                  MaterialPageRoute(
+                    builder: (context) => RoomSelectionScreen(
+                      floor: 'First Floor',
+                      rooms: 7,
+                      startingRoomNumber: 101,
+                    ),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.red, // foreground
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.red, // foreground
               ),
               child: const Text('First Floor'),
             ),
-
           ],
         ),
       ),
@@ -80,6 +93,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   String? _roomType;
   String? _packageType;
   final TextEditingController _extraDetailsController = TextEditingController();
+  Set<int> _selectedRooms = {};
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -88,10 +102,11 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
-    if (picked != null && picked != _selectedDate)
+    if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
       });
+    }
   }
 
   @override
@@ -145,17 +160,16 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                 });
               },
             ),
-            const SizedBox(height: 20),
             TextField(
               controller: _extraDetailsController,
               decoration: InputDecoration(labelText: 'Extra Details'),
               maxLines: 3,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 50),
             Expanded(
               child: GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5, // 4 rooms per row
+                  crossAxisCount: 4, // 4 rooms per row
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
                   childAspectRatio: 1,
@@ -163,25 +177,24 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                 itemCount: widget.rooms,
                 itemBuilder: (context, index) {
                   int roomNumber = widget.startingRoomNumber + index;
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.black),
-                      borderRadius: BorderRadius.circular(10.0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.5),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: Offset(0, 3), // changes position of shadow
-                        ),
-                      ],
+                  return ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        if (_selectedRooms.contains(roomNumber)) {
+                          _selectedRooms.remove(roomNumber);
+                        } else {
+                          _selectedRooms.add(roomNumber);
+                        }
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.black, backgroundColor: _selectedRooms.contains(roomNumber)
+                          ? Colors.green
+                          : Colors.white,
                     ),
-                    child: Center(
-                      child: Text(
-                        roomNumber.toString().padLeft(3, '0'), // Format room number to 3 digits
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
+                    child: Text(
+                      roomNumber.toString().padLeft(3, '0'), // Format room number to 3 digits
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                   );
                 },
