@@ -14,11 +14,12 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: const Text(
-            'Hotel Room Booking',
-          style:
-          color: Colors.white, // Set the title text color to white
-          fontFamily: 'CustomFont', // Set the custom font family
-          fontWeight: FontWeight.bold, // Set the font weight if needed
+          'Hotel Room Booking',
+          style: TextStyle(
+            color: Colors.white, // Set the title text color to white
+            fontFamily: 'outfit', // Set the custom font family
+            fontWeight: FontWeight.bold, // Set the font weight if needed
+          ),
         ),
         backgroundColor: Colors.indigo,
       ),
@@ -113,8 +114,15 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.floor),
-        backgroundColor: Colors.red,
+        title: Text(
+            widget.floor,
+          style: TextStyle(
+            color: Colors.white, // Set the title text color to white
+            fontFamily: 'outfit', // Set the custom font family
+            fontWeight: FontWeight.bold, // Set the font weight if needed
+          ),
+        ),
+        backgroundColor: Colors.indigo,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
