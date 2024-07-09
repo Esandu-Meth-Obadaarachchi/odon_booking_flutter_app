@@ -1,7 +1,6 @@
-// lib/room_selection_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'api_service.dart';
 
 class RoomSelectionScreen extends StatefulWidget {
   final String floor;
@@ -24,6 +23,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   String? _packageType;
   final TextEditingController _extraDetailsController = TextEditingController();
   Set<int> _selectedRooms = {};
+  final ApiService _apiService = ApiService();
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -47,6 +47,47 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       _extraDetailsController.clear();
       _selectedRooms.clear();
     });
+  }
+
+  Future<void> _saveBooking() async {
+    if (_selectedDate == null ||
+        _roomType == null ||
+        _packageType == null ||
+        _selectedRooms.isEmpty) {
+      // Show error message if any required field is missing
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please fill in all fields and select rooms')),
+      );
+      return;
+    }
+
+    for (int roomNumber in _selectedRooms) {
+      final newBooking = {
+        'roomNumber': roomNumber.toString(),
+        'roomType': _roomType!,
+        'packageType': _packageType!,
+        'extraDetails': _extraDetailsController.text,
+        'date': _selectedDate!.toIso8601String(),
+      };
+
+      try {
+        await _apiService.addBooking(newBooking);
+      } catch (e) {
+        print('Failed to add booking: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save booking')),
+        );
+        return;
+      }
+    }
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Booking(s) saved successfully')),
+    );
+
+    // Reset booking form
+    _resetBooking();
   }
 
   @override
@@ -161,7 +202,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
             const SizedBox(height: 20),
             Center(
               child: ElevatedButton(
-                onPressed: _resetBooking,
+                onPressed: _saveBooking,
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white, backgroundColor: Colors.indigo,
                   padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),

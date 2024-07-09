@@ -1,8 +1,8 @@
-// lib/view_bookings_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'api_service.dart';
 import 'edit_booking_screen.dart';
+
 
 class ViewBookingsScreen extends StatefulWidget {
   @override
@@ -13,55 +13,25 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  List<Map<String, String>> _bookingsForSelectedDay = [];
 
-  // Dummy bookings data
-  final Map<DateTime, List<Map<String, String>>> _bookings = {
-    DateTime.utc(2024, 7, 7): [
-      {
-        'roomNumber': 'Room 101',
-        'roomType': 'Family',
-        'packageType': 'Full Board',
-        'extraDetails': 'Near pool',
-      },
-      {
-        'roomNumber': 'Room 102',
-        'roomType': 'Double',
-        'packageType': 'BnB',
-        'extraDetails': 'Sea view',
-      },
-    ],
-    DateTime.utc(2024, 7, 10): [
-      {
-        'roomNumber': 'Room 103',
-        'roomType': 'Triple',
-        'packageType': 'Half Board',
-        'extraDetails': 'High floor',
-      },
-    ],
-    DateTime.utc(2024, 7, 15): [
-      {
-        'roomNumber': 'Room 201',
-        'roomType': 'Family Plus',
-        'packageType': 'Room Only',
-        'extraDetails': 'Corner room',
-      },
-      {
-        'roomNumber': 'Room 202',
-        'roomType': 'Double',
-        'packageType': 'Full Board',
-        'extraDetails': 'Garden view',
-      },
-      {
-        'roomNumber': 'Room 203',
-        'roomType': 'Family',
-        'packageType': 'Half Board',
-        'extraDetails': 'Near elevator',
-      },
-    ],
-  };
+  final ApiService _apiService = ApiService();
 
-  List<Map<String, String>> _getBookingsForDay(DateTime day) {
-    return _bookings[day] ?? [];
+  @override
+  void initState() {
+    super.initState();
+    _fetchBookingsForDay(_focusedDay);
+  }
+
+  Future<void> _fetchBookingsForDay(DateTime day) async {
+    try {
+      final bookings = await _apiService.fetchBookings(day);
+      setState(() {
+        _bookingsForSelectedDay = bookings.cast<Map<String, String>>();
+      });
+    } catch (e) {
+      print('Failed to fetch bookings: $e');
+    }
   }
 
   @override
@@ -95,6 +65,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                   _selectedDay = selectedDay;
                   _focusedDay = focusedDay;
                 });
+                _fetchBookingsForDay(selectedDay);
               },
               onFormatChanged: (format) {
                 setState(() {
@@ -104,14 +75,15 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
               onPageChanged: (focusedDay) {
                 _focusedDay = focusedDay;
               },
-              eventLoader: _getBookingsForDay,
             ),
             const SizedBox(height: 16.0),
             Expanded(
-              child: ListView.builder(
-                itemCount: _getBookingsForDay(_selectedDay ?? _focusedDay).length,
+              child: _bookingsForSelectedDay.isEmpty
+                  ? Center(child: Text('No bookings for selected day'))
+                  : ListView.builder(
+                itemCount: _bookingsForSelectedDay.length,
                 itemBuilder: (context, index) {
-                  final booking = _getBookingsForDay(_selectedDay ?? _focusedDay)[index];
+                  final booking = _bookingsForSelectedDay[index];
                   return ListTile(
                     title: Text(
                       booking['roomNumber']!,
@@ -122,8 +94,8 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                     ),
                     trailing: IconButton(
                       icon: Icon(Icons.edit),
-                      onPressed: () {
-                        Navigator.push(
+                      onPressed: () async {
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => EditBookingScreen(
@@ -132,6 +104,9 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                             ),
                           ),
                         );
+                        if (result == true) {
+                          _fetchBookingsForDay(_selectedDay ?? _focusedDay);
+                        }
                       },
                     ),
                   );

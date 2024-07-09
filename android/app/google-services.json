@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1001941852421",
+    "project_id": "hotelbooking-507e1",
+    "storage_bucket": "hotelbooking-507e1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1001941852421:android:6ec96cee92f7a83134d76c",
+        "android_client_info": {
+          "package_name": "com.example.odon_booking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJnttdpGxiHR-VhigwifR53hkiwzThJ0o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
