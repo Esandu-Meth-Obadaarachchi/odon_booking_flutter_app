@@ -76,16 +76,17 @@ app.put('/bookings/:id', async (req, res) => {
 app.delete('/bookings/:id', async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    if (booking) {
-      await booking.remove();
-      res.json({ message: 'Booking deleted' });
-    } else {
-      res.status(404).json({ message: 'Booking not found' });
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
     }
+
+    await booking.remove();
+    res.json({ message: 'Booking deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

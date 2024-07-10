@@ -3,7 +3,6 @@ import 'package:table_calendar/table_calendar.dart';
 import 'api_service.dart';
 import 'edit_booking_screen.dart';
 
-
 class ViewBookingsScreen extends StatefulWidget {
   @override
   _ViewBookingsScreenState createState() => _ViewBookingsScreenState();
@@ -13,7 +12,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  List<Map<String, String>> _bookingsForSelectedDay = [];
+  List<Map<String, dynamic>> _bookingsForSelectedDay = [];
 
   final ApiService _apiService = ApiService();
 
@@ -27,7 +26,10 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
     try {
       final bookings = await _apiService.fetchBookings(day);
       setState(() {
-        _bookingsForSelectedDay = bookings.cast<Map<String, String>>();
+        _bookingsForSelectedDay = bookings.where((booking) {
+          final bookingDate = DateTime.parse(booking['date']);
+          return isSameDay(bookingDate, day);
+        }).toList();
       });
     } catch (e) {
       print('Failed to fetch bookings: $e');
@@ -86,11 +88,11 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                   final booking = _bookingsForSelectedDay[index];
                   return ListTile(
                     title: Text(
-                      booking['roomNumber']!,
+                      booking['roomNumber'] as String? ?? '',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      'Type: ${booking['roomType']}, Package: ${booking['packageType']}\nDetails: ${booking['extraDetails']}',
+                      'Type: ${booking['roomType']}, Package: ${booking['package']}\nDetails: ${booking['extraDetails']}',
                     ),
                     trailing: IconButton(
                       icon: Icon(Icons.edit),

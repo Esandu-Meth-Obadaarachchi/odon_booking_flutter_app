@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'api_service.dart';
 
 class EditBookingScreen extends StatelessWidget {
-  final Map<String, String> booking;
+  final Map<String, dynamic> booking;
   final DateTime selectedDay;
   final ApiService _apiService = ApiService();
 
@@ -10,10 +10,10 @@ class EditBookingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    TextEditingController roomNumberController = TextEditingController(text: booking['roomNumber']);
-    TextEditingController roomTypeController = TextEditingController(text: booking['roomType']);
-    TextEditingController packageTypeController = TextEditingController(text: booking['packageType']);
-    TextEditingController extraDetailsController = TextEditingController(text: booking['extraDetails']);
+    TextEditingController roomNumberController = TextEditingController(text: booking['roomNumber'] as String? ?? '');
+    TextEditingController roomTypeController = TextEditingController(text: booking['roomType'] as String? ?? '');
+    TextEditingController packageTypeController = TextEditingController(text: booking['package'] as String? ?? '');
+    TextEditingController extraDetailsController = TextEditingController(text: booking['extraDetails'] as String? ?? '');
 
     return Scaffold(
       appBar: AppBar(
@@ -45,13 +45,13 @@ class EditBookingScreen extends StatelessWidget {
                 final updatedBooking = {
                   'roomNumber': roomNumberController.text,
                   'roomType': roomTypeController.text,
-                  'packageType': packageTypeController.text,
+                  'package': packageTypeController.text,
                   'extraDetails': extraDetailsController.text,
                   'date': selectedDay.toIso8601String(),
                 };
 
                 try {
-                  await _apiService.updateBooking(booking['_id']!, updatedBooking);
+                  await _apiService.updateBooking(booking['_id'] as String, updatedBooking);
                   Navigator.pop(context, true);  // Indicate that an update occurred
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -65,7 +65,7 @@ class EditBookingScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  await _apiService.deleteBooking(booking['_id']!);
+                  await _apiService.deleteBooking(booking['_id'] as String);
                   Navigator.pop(context, true);  // Indicate that a deletion occurred
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(

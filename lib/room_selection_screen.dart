@@ -62,12 +62,13 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     }
 
     for (int roomNumber in _selectedRooms) {
+      final adjustedDate = _selectedDate!.add(Duration(days: 1)); // Adjust the date
       final newBooking = {
         'roomNumber': roomNumber.toString(),
         'roomType': _roomType!,
-        'packageType': _packageType!,
+        'package': _packageType!,  // Use 'package' here
         'extraDetails': _extraDetailsController.text,
-        'date': _selectedDate!.toIso8601String(),
+        'date': adjustedDate.toIso8601String(),
       };
 
       try {
@@ -120,6 +121,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
             ),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
+              value: _roomType,
               decoration: InputDecoration(labelText: 'Select Room Type'),
               items: ['Family', 'Family Plus', 'Triple', 'Double']
                   .map((label) => DropdownMenuItem(
@@ -135,6 +137,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
             ),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
+              value: _packageType,
               decoration: InputDecoration(labelText: 'Select Package Type'),
               items: ['Full Board', 'Half Board', 'Room Only', 'BnB']
                   .map((label) => DropdownMenuItem(
@@ -204,7 +207,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
               child: ElevatedButton(
                 onPressed: _saveBooking,
                 style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white, backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.indigo,
                   padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
                 child: Text(
