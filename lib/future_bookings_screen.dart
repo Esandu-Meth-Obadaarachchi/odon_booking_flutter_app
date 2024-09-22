@@ -52,6 +52,9 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
           ),
         ),
         backgroundColor: Colors.indigo,
+        iconTheme: IconThemeData(
+          color: Colors.white, // Sets the back arrow color to white
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -64,7 +67,7 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
             DateTime bookingDate = DateTime.parse(booking['date']);
             return ListTile(
               title: Text(
-                booking['roomNumber'] as String? ?? '',
+                'Room Number: ${booking['roomNumber'] as String? ?? ''}',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Column(

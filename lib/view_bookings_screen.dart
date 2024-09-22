@@ -3,6 +3,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'api_service.dart';
 import 'edit_booking_screen.dart';
 import 'future_bookings_screen.dart'; // Import the correct file
+import 'past_bookings_screen.dart';
 
 class ViewBookingsScreen extends StatefulWidget {
   @override
@@ -50,6 +51,10 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
           ),
         ),
         backgroundColor: Colors.indigo,
+        iconTheme: IconThemeData(
+          color: Colors.white, // Sets the back arrow color to white
+        ),
+
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -83,7 +88,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
               },
             ),
             const SizedBox(height: 16.0),
-            ElevatedButton( // Button to navigate to future bookings screen
+            ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -93,6 +98,18 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                 );
               },
               child: Text('List All Future Bookings'),
+            ),
+            const SizedBox(height: 8.0), // Add space between buttons
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PastBookingsScreen(),
+                  ),
+                );
+              },
+              child: Text('Past Bookings'),
             ),
             Expanded(
               child: _bookingsForSelectedDay.isEmpty

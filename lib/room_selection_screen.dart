@@ -23,6 +23,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   String? _packageType;
   final TextEditingController _extraDetailsController = TextEditingController();
   Set<int> _selectedRooms = {};
+  Set<int> _bookedRooms = {}; // To store the rooms already booked for the selected date
   final ApiService _apiService = ApiService();
 
   Future<void> _selectDate(BuildContext context) async {
@@ -36,6 +37,46 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       setState(() {
         _selectedDate = picked;
       });
+
+      // Fetch bookings for the selected date
+      await _fetchBookingsForDate(picked);
+    }
+  }
+
+  Future<void> _fetchBookingsForDate(DateTime date) async {
+    try {
+      print('Fetching bookings for date: ${date.toIso8601String()}');
+      List<Map<String, dynamic>> bookings = await _apiService.fetchBookings(date);
+
+      print('Fetched bookings: $bookings'); // Debug: print fetched bookings
+
+      setState(() {
+        // Filter bookings to include only those that match the selected date
+        _bookedRooms = bookings
+            .where((booking) {
+          // Parse the booking date and compare it with the selected date
+          DateTime bookingDate = DateTime.parse(booking['date']);
+          bool isSameDay = bookingDate.year == date.year &&
+              bookingDate.month == date.month &&
+              bookingDate.day == date.day;
+
+          if (isSameDay) {
+            int roomNumber = int.parse(booking['roomNumber']);
+            print('Booked room for selected date: $roomNumber'); // Debug: print each booked room number for selected date
+            return true;
+          }
+          return false;
+        })
+            .map((booking) => int.parse(booking['roomNumber']))
+            .toSet();
+      });
+
+      print('Booked rooms for selected date set: $_bookedRooms'); // Debug: print the final booked rooms set for selected date
+    } catch (e) {
+      print('Failed to fetch bookings: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch bookings')),
+      );
     }
   }
 
@@ -46,6 +87,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       _packageType = null;
       _extraDetailsController.clear();
       _selectedRooms.clear();
+      _bookedRooms.clear();
     });
   }
 
@@ -66,7 +108,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       final newBooking = {
         'roomNumber': roomNumber.toString(),
         'roomType': _roomType!,
-        'package': _packageType!,  // Use 'package' here
+        'package': _packageType!,
         'extraDetails': _extraDetailsController.text,
         'date': adjustedDate.toIso8601String(),
       };
@@ -94,17 +136,20 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.floor,
-          style: TextStyle(
-            color: Colors.white,
-            fontFamily: 'outfit',
-            fontWeight: FontWeight.bold,
-          ),
+    appBar: AppBar(
+      title: Text(
+        widget.floor,
+        style: TextStyle(
+          color: Colors.white,
+          fontFamily: 'outfit',
+          fontWeight: FontWeight.bold,
         ),
-        backgroundColor: Colors.indigo,
       ),
+      backgroundColor: Colors.indigo,
+      iconTheme: IconThemeData(
+        color: Colors.white, // Sets the back arrow color to white
+      ),
+    ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -175,8 +220,16 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   itemCount: widget.rooms,
                   itemBuilder: (context, index) {
                     int roomNumber = widget.startingRoomNumber + index;
+
+                    // Check if the room is already booked
+                    bool isBooked = _bookedRooms.contains(roomNumber);
+
+                    print('Processing room number: $roomNumber, isBooked: $isBooked'); // Debug: print room processing details
+
                     return ElevatedButton(
-                      onPressed: () {
+                      onPressed: isBooked
+                          ? null // Disable button if room is booked
+                          : () {
                         setState(() {
                           if (_selectedRooms.contains(roomNumber)) {
                             _selectedRooms.remove(roomNumber);
@@ -187,15 +240,19 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.black,
-                        backgroundColor: _selectedRooms.contains(roomNumber)
+                        backgroundColor: isBooked
+                            ? Colors.red // Mark booked rooms in red
+                            : (_selectedRooms.contains(roomNumber)
                             ? Colors.green
-                            : Colors.white,
+                            : Colors.white),
                         padding: EdgeInsets.all(8.0),
                       ),
                       child: Text(
                         roomNumber.toString().padLeft(3, '0'),
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     );
                   },

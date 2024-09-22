@@ -20,6 +20,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   table_calendar: ^3.0.0
   http: ^0.13.4
+  month_picker_dialog: ^2.0.1
 
 
 dev_dependencies:

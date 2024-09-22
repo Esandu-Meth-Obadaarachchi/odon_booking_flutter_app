@@ -14,6 +14,22 @@ class ApiService {
       throw Exception('Failed to fetch future bookings: ${response.reasonPhrase}');
     }
   }
+  // Method to fetch bookings for a specific month and year
+  Future<List<Map<String, dynamic>>> fetchBookingsForMonth(DateTime month) async {
+    // Get the start and end of the selected month
+    final String startOfMonth = DateTime(month.year, month.month, 1).toIso8601String();
+    final String endOfMonth = DateTime(month.year, month.month + 1, 0).toIso8601String();
+
+    // API call to fetch bookings within the selected month
+    final response = await http.get(Uri.parse('$baseUrl/bookings?fromDate=$startOfMonth&toDate=$endOfMonth'));
+
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch bookings for the selected month: ${response.reasonPhrase}');
+    }
+  }
 
   Future<List<Map<String, dynamic>>> fetchBookings(DateTime date) async {
     final response = await http.get(Uri.parse('$baseUrl/bookings?date=${date.toIso8601String()}'));
