@@ -19,9 +19,20 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
 
   Future<void> _fetchFutureBookings() async {
     try {
-      final bookings = await _apiService.fetchFutureBookings(DateTime.now());
+      final DateTime currentDate = DateTime.now();
+      final bookings = await _apiService.fetchFutureBookings(currentDate);
+
+      // Filter out past bookings
+      final filteredBookings = bookings.where((booking) {
+        DateTime bookingDate = DateTime.parse(booking['date']);
+        return bookingDate.isAfter(currentDate); // Only include bookings ahead of current date
+      }).toList();
+
+      // Sort filtered bookings by date in ascending order
+      filteredBookings.sort((a, b) => DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
+
       setState(() {
-        _futureBookings = bookings;
+        _futureBookings = filteredBookings;
       });
     } catch (e) {
       print('Failed to fetch future bookings: $e');
@@ -50,13 +61,26 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
           itemCount: _futureBookings.length,
           itemBuilder: (context, index) {
             final booking = _futureBookings[index];
+            DateTime bookingDate = DateTime.parse(booking['date']);
             return ListTile(
               title: Text(
                 booking['roomNumber'] as String? ?? '',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              subtitle: Text(
-                'Type: ${booking['roomType']}, Package: ${booking['package']}\nDetails: ${booking['extraDetails']}',
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Date: ${_formatDate(bookingDate)}',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Type: ${booking['roomType']}, Package: ${booking['package']}',
+                  ),
+                  Text(
+                    'Details: ${booking['extraDetails']}',
+                  ),
+                ],
               ),
               trailing: IconButton(
                 icon: Icon(Icons.edit),
@@ -66,7 +90,7 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
                     MaterialPageRoute(
                       builder: (context) => EditBookingScreen(
                         booking: booking,
-                        selectedDay: DateTime.parse(booking['date']),
+                        selectedDay: bookingDate,
                       ),
                     ),
                   );
@@ -80,5 +104,9 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

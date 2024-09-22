@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String baseUrl = 'http://192.168.1.48:1000'; // Replace with your actual server URL
+  final String baseUrl = 'http://192.168.1.26:3000'; // Replace with your actual server URL
 
   // Method to fetch future bookings starting from a given date
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {

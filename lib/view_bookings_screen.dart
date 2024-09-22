@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'api_service.dart';
 import 'edit_booking_screen.dart';
+import 'future_bookings_screen.dart'; // Import the correct file
 
 class ViewBookingsScreen extends StatefulWidget {
   @override
@@ -19,7 +20,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchBookingsForDay(_focusedDay);
+    _fetchBookingsForDay(_focusedDay); // Fetch bookings for initial focused day
   }
 
   Future<void> _fetchBookingsForDay(DateTime day) async {
@@ -67,7 +68,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                   _selectedDay = selectedDay;
                   _focusedDay = focusedDay;
                 });
-                _fetchBookingsForDay(selectedDay);
+                _fetchBookingsForDay(selectedDay); // Update bookings for selected day
               },
               onFormatChanged: (format) {
                 setState(() {
@@ -75,10 +76,24 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                 });
               },
               onPageChanged: (focusedDay) {
-                _focusedDay = focusedDay;
+                setState(() {
+                  _focusedDay = focusedDay;
+                });
+                _fetchBookingsForDay(focusedDay); // Fetch bookings when calendar page changes
               },
             ),
             const SizedBox(height: 16.0),
+            ElevatedButton( // Button to navigate to future bookings screen
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FutureBookingsScreen(),
+                  ),
+                );
+              },
+              child: Text('List All Future Bookings'),
+            ),
             Expanded(
               child: _bookingsForSelectedDay.isEmpty
                   ? Center(child: Text('No bookings for selected day'))
