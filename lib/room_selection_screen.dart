@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'api_service.dart';
-
+//now WHAT I HAVE TO DO IS PUT A SCREEN TO ASSIGN ROOM TYPE TO ROOMS , AND ALSO BLOCKING BOOKED ONES DOESNT WORK
 class RoomSelectionScreen extends StatefulWidget {
   final String floor;
   final int rooms;
@@ -18,60 +18,117 @@ class RoomSelectionScreen extends StatefulWidget {
 }
 
 class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
-  DateTime? _selectedDate;
+  DateTime? _checkInDate;
+  DateTime? _checkOutDate;
   String? _roomType;
   String? _packageType;
   final TextEditingController _extraDetailsController = TextEditingController();
   Set<int> _selectedRooms = {};
-  Set<int> _bookedRooms = {}; // To store the rooms already booked for the selected date
+  Set<int> _bookedRooms = {};
   final ApiService _apiService = ApiService();
 
-  Future<void> _selectDate(BuildContext context) async {
+  int _numOfNights = 0;
+
+  // Method to select check-in date
+  Future<void> _selectCheckInDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
-    if (picked != null && picked != _selectedDate) {
+    if (picked != null && picked != _checkInDate) {
       setState(() {
-        _selectedDate = picked;
+        _checkInDate = picked;
       });
 
-      // Fetch bookings for the selected date
-      await _fetchBookingsForDate(picked);
+      if (_checkOutDate != null) {
+        _calculateNumOfNights();
+        _fetchBookingsForDateRange(); // Fetch bookings for the selected range
+      }
     }
   }
 
-  Future<void> _fetchBookingsForDate(DateTime date) async {
-    try {
-      print('Fetching bookings for date: ${date.toIso8601String()}');
-      List<Map<String, dynamic>> bookings = await _apiService.fetchBookings(date);
+  // Method to select check-out date
+  Future<void> _selectCheckOutDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _checkInDate ?? DateTime.now(),
+      firstDate: _checkInDate ?? DateTime.now(),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null && picked != _checkOutDate) {
+      setState(() {
+        _checkOutDate = picked;
+      });
 
-      print('Fetched bookings: $bookings'); // Debug: print fetched bookings
+      if (_checkInDate != null) {
+        _calculateNumOfNights();
+        _fetchBookingsForDateRange(); // Fetch bookings for the selected range
+      }
+    }
+  }
+
+  // Calculate number of nights based on check-in and check-out
+  void _calculateNumOfNights() {
+    if (_checkInDate != null && _checkOutDate != null) {
+      setState(() {
+        _numOfNights = _checkOutDate!.difference(_checkInDate!).inDays;
+      });
+    }
+  }
+
+  Future<void> _fetchBookingsForDateRange() async {
+    if (_checkInDate == null || _checkOutDate == null) {
+      print('No check-in or check-out date selected');
+      return;
+    }
+
+    try {
+      // Fetch all bookings for the selected date range
+      List<Map<String, dynamic>> bookings = await _apiService.fetchBookingsForDateRange(_checkInDate!, _checkOutDate!);
 
       setState(() {
-        // Filter bookings to include only those that match the selected date
         _bookedRooms = bookings
             .where((booking) {
-          // Parse the booking date and compare it with the selected date
-          DateTime bookingDate = DateTime.parse(booking['date']);
-          bool isSameDay = bookingDate.year == date.year &&
-              bookingDate.month == date.month &&
-              bookingDate.day == date.day;
+          DateTime bookingCheckIn = DateTime.parse(booking['checkIn']);
+          DateTime bookingCheckOut = DateTime.parse(booking['checkOut']);
 
-          if (isSameDay) {
-            int roomNumber = int.parse(booking['roomNumber']);
-            print('Booked room for selected date: $roomNumber'); // Debug: print each booked room number for selected date
-            return true;
+          // Normalize both booking and user-selected dates to ignore the time part
+          DateTime normalizedBookingCheckIn = DateTime(bookingCheckIn.year, bookingCheckIn.month, bookingCheckIn.day);
+          DateTime normalizedBookingCheckOut = DateTime(bookingCheckOut.year, bookingCheckOut.month, bookingCheckOut.day);
+          DateTime normalizedCheckIn = DateTime(_checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
+          DateTime normalizedCheckOut = DateTime(_checkOutDate!.year, _checkOutDate!.month, _checkOutDate!.day);
+
+          // Print fetched room details for debugging
+          print('Fetched booking - Room: ${booking['roomNumber']}, Check-in: $bookingCheckIn, Check-out: $bookingCheckOut');
+
+          // Check if there's an overlap in booking (ignoring time, comparing only dates)
+          bool isBooked = normalizedCheckIn.isBefore(normalizedBookingCheckOut) &&
+              normalizedCheckOut.isAfter(normalizedBookingCheckIn);
+
+          // Debugging: Print the overlap check
+          print('Normalized Check-In: $normalizedCheckIn, Check-Out: $normalizedCheckOut');
+          print('Comparing with Booking - Room: ${booking['roomNumber']}, Normalized Booking Check-In: $normalizedBookingCheckIn, Normalized Booking Check-Out: $normalizedBookingCheckOut');
+          print('Is Booked (before checkout logic): $isBooked');
+
+          // Logic to handle the case where the check-in date is on the day of the checkout
+          if (normalizedCheckIn.isAtSameMomentAs(normalizedBookingCheckOut)) {
+            isBooked = false; // Room should be available for booking on the checkout day
+            print('Check-in is on checkout day, so not booked: Room ${booking['roomNumber']}');
           }
-          return false;
+
+          // Final debug statement to confirm the booking status
+          print('Final isBooked for Room ${booking['roomNumber']}: $isBooked');
+
+          return isBooked;
         })
             .map((booking) => int.parse(booking['roomNumber']))
             .toSet();
-      });
 
-      print('Booked rooms for selected date set: $_bookedRooms'); // Debug: print the final booked rooms set for selected date
+        // Debugging: Print the final booked rooms
+        print('Booked rooms for the selected range: $_bookedRooms');
+      });
     } catch (e) {
       print('Failed to fetch bookings: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -80,43 +137,41 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     }
   }
 
-  void _resetBooking() {
-    setState(() {
-      _selectedDate = null;
-      _roomType = null;
-      _packageType = null;
-      _extraDetailsController.clear();
-      _selectedRooms.clear();
-      _bookedRooms.clear();
-    });
-  }
+
+
+
 
   Future<void> _saveBooking() async {
-    if (_selectedDate == null ||
-        _roomType == null ||
-        _packageType == null ||
-        _selectedRooms.isEmpty) {
-      // Show error message if any required field is missing
+    if (_checkInDate == null || _checkOutDate == null || _roomType == null || _packageType == null || _selectedRooms.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please fill in all fields and select rooms')),
       );
       return;
     }
 
+    // Normalize check-in and check-out dates to avoid timezone issues
+    DateTime normalizedCheckInDate = DateTime(_checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
+    DateTime normalizedCheckOutDate = DateTime(_checkOutDate!.year, _checkOutDate!.month, _checkOutDate!.day);
+
     for (int roomNumber in _selectedRooms) {
-      final adjustedDate = _selectedDate!.add(Duration(days: 1)); // Adjust the date
+      // Assuming normalizedCheckInDate and normalizedCheckOutDate are DateTime objects
+      final newCheckInDate = normalizedCheckInDate.add(Duration(days: 1));
+      final newCheckOutDate = normalizedCheckOutDate.add(Duration(days: 1));
+      //
       final newBooking = {
         'roomNumber': roomNumber.toString(),
         'roomType': _roomType!,
         'package': _packageType!,
         'extraDetails': _extraDetailsController.text,
-        'date': adjustedDate.toIso8601String(),
+        'checkIn': newCheckInDate.toIso8601String(),
+        'checkOut': newCheckOutDate.toIso8601String(),
+        'num_of_nights': _numOfNights,
       };
 
-      try {
+
+    try {
         await _apiService.addBooking(newBooking);
       } catch (e) {
-        print('Failed to add booking: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to save booking')),
         );
@@ -124,45 +179,70 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       }
     }
 
-    // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Booking(s) saved successfully')),
     );
 
-    // Reset booking form
     _resetBooking();
+  }
+
+
+  void _resetBooking() {
+    setState(() {
+      _roomType = null;
+      _packageType = null;
+      _extraDetailsController.clear();
+      _selectedRooms.clear();
+      _bookedRooms.clear();
+      _checkInDate = null;
+      _checkOutDate = null;
+      _numOfNights = 0;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-    appBar: AppBar(
-      title: Text(
-        widget.floor,
-        style: TextStyle(
+      appBar: AppBar(
+        title: Text(
+          widget.floor,
+          style: TextStyle(
+            color: Colors.white,
+            fontFamily: 'outfit',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.indigo,
+        iconTheme: IconThemeData(
           color: Colors.white,
-          fontFamily: 'outfit',
-          fontWeight: FontWeight.bold,
         ),
       ),
-      backgroundColor: Colors.indigo,
-      iconTheme: IconThemeData(
-        color: Colors.white, // Sets the back arrow color to white
-      ),
-    ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextButton(
-              onPressed: () => _selectDate(context),
+              onPressed: () => _selectCheckInDate(context),
               child: Text(
-                _selectedDate == null
-                    ? 'Select Date'
-                    : DateFormat('yyyy-MM-dd').format(_selectedDate!),
+                _checkInDate == null
+                    ? 'Select Check-In Date'
+                    : DateFormat('yyyy-MM-dd').format(_checkInDate!),
                 style: TextStyle(fontSize: 16),
               ),
+            ),
+            TextButton(
+              onPressed: () => _selectCheckOutDate(context),
+              child: Text(
+                _checkOutDate == null
+                    ? 'Select Check-Out Date'
+                    : DateFormat('yyyy-MM-dd').format(_checkOutDate!),
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+            Text(
+              'Number of Nights: $_numOfNights',
+              style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
@@ -221,10 +301,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   itemBuilder: (context, index) {
                     int roomNumber = widget.startingRoomNumber + index;
 
-                    // Check if the room is already booked
+                    // Check if the room is already booked for the selected date range
                     bool isBooked = _bookedRooms.contains(roomNumber);
-
-                    print('Processing room number: $roomNumber, isBooked: $isBooked'); // Debug: print room processing details
 
                     return ElevatedButton(
                       onPressed: isBooked

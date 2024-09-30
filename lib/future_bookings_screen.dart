@@ -22,14 +22,14 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
       final DateTime currentDate = DateTime.now();
       final bookings = await _apiService.fetchFutureBookings(currentDate);
 
-      // Filter out past bookings
+      // Filter out bookings that have already checked out
       final filteredBookings = bookings.where((booking) {
-        DateTime bookingDate = DateTime.parse(booking['date']);
-        return bookingDate.isAfter(currentDate); // Only include bookings ahead of current date
+        DateTime checkInDate = DateTime.parse(booking['checkIn']);
+        return checkInDate.isAfter(currentDate); // Only include bookings with future check-ins
       }).toList();
 
-      // Sort filtered bookings by date in ascending order
-      filteredBookings.sort((a, b) => DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
+      // Sort filtered bookings by check-in date in ascending order
+      filteredBookings.sort((a, b) => DateTime.parse(a['checkIn']).compareTo(DateTime.parse(b['checkIn'])));
 
       setState(() {
         _futureBookings = filteredBookings;
@@ -64,24 +64,41 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
           itemCount: _futureBookings.length,
           itemBuilder: (context, index) {
             final booking = _futureBookings[index];
-            DateTime bookingDate = DateTime.parse(booking['date']);
+
+            // Parse check-in, check-out, and number of nights fields
+            DateTime checkInDate = DateTime.parse(booking['checkIn']);
+            DateTime? checkOutDate = booking['checkOut'] != null
+                ? DateTime.parse(booking['checkOut'])
+                : null;
+            final numOfNights = booking['num_of_nights'] ?? 'N/A';
+
             return ListTile(
               title: Text(
-                'Room Number: ${booking['roomNumber'] as String? ?? ''}',
+                'Room Number: ${booking['roomNumber'] as String? ?? 'N/A'}',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Display Check-in, Check-out, and Number of Nights
                   Text(
-                    'Date: ${_formatDate(bookingDate)}',
+                    'Check-in: ${_formatDate(checkInDate)}',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    'Type: ${booking['roomType']}, Package: ${booking['package']}',
+                    'Check-out: ${checkOutDate != null ? _formatDate(checkOutDate) : 'N/A'}',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    'Details: ${booking['extraDetails']}',
+                    'Nights: $numOfNights',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  // Display Room Type, Package, and Extra Details
+                  Text(
+                    'Type: ${booking['roomType'] ?? 'N/A'}, Package: ${booking['package'] ?? 'N/A'}',
+                  ),
+                  Text(
+                    'Details: ${booking['extraDetails'] ?? 'N/A'}',
                   ),
                 ],
               ),
@@ -93,12 +110,12 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
                     MaterialPageRoute(
                       builder: (context) => EditBookingScreen(
                         booking: booking,
-                        selectedDay: bookingDate,
+                        selectedDay: checkInDate,
                       ),
                     ),
                   );
                   if (result == true) {
-                    _fetchFutureBookings();
+                    _fetchFutureBookings(); // Reload bookings after edit
                   }
                 },
               ),
@@ -109,6 +126,7 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
     );
   }
 
+  // Utility to format DateTime as 'DD/MM/YYYY'
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }

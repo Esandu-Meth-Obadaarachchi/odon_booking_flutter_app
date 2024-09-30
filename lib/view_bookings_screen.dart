@@ -29,8 +29,8 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
       final bookings = await _apiService.fetchBookings(day);
       setState(() {
         _bookingsForSelectedDay = bookings.where((booking) {
-          final bookingDate = DateTime.parse(booking['date']);
-          return isSameDay(bookingDate, day);
+          final checkInDate = DateTime.parse(booking['checkIn']);
+          return isSameDay(checkInDate, day);
         }).toList();
       });
     } catch (e) {
@@ -54,7 +54,6 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
         iconTheme: IconThemeData(
           color: Colors.white, // Sets the back arrow color to white
         ),
-
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -118,13 +117,35 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                 itemCount: _bookingsForSelectedDay.length,
                 itemBuilder: (context, index) {
                   final booking = _bookingsForSelectedDay[index];
+
+                  // Adding null checks with defaults where necessary
+                  final roomNumber = booking['roomNumber'] as String? ?? 'N/A';
+                  final roomType = booking['roomType'] as String? ?? 'N/A';
+                  final package = booking['package'] as String? ?? 'N/A';
+                  final extraDetails = booking['extraDetails'] as String? ?? 'N/A';
+
+                  // Parsing new fields: checkIn, checkOut, num_of_nights
+                  final checkIn = booking['checkIn'] != null
+                      ? DateTime.parse(booking['checkIn']).subtract(Duration(days: 1))
+                      : null;
+                  final checkOut = booking['checkOut'] != null
+                      ? DateTime.parse(booking['checkOut']).subtract(Duration(days: 1))
+                      : null;
+                  final num_of_nights = booking['num_of_nights'] != null
+                      ? booking['num_of_nights'].toString()
+                      : 'N/A';
                   return ListTile(
                     title: Text(
-                      booking['roomNumber'] as String? ?? '',
+                      'Room number: $roomNumber'
+                      ,
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      'Type: ${booking['roomType']}, Package: ${booking['package']}\nDetails: ${booking['extraDetails']}',
+                      'Type: $roomType, Package: $package\n'
+                          'Details: $extraDetails\n'
+                          'Check-in: ${checkIn != null ? checkIn.toLocal().toString().split(' ')[0] : 'N/A'}\n'
+                          'Check-out: ${checkOut != null ? checkOut.toLocal().toString().split(' ')[0] : 'N/A'}\n'
+                          'Nights: $num_of_nights',
                     ),
                     trailing: IconButton(
                       icon: Icon(Icons.edit),
@@ -153,3 +174,4 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
     );
   }
 }
+

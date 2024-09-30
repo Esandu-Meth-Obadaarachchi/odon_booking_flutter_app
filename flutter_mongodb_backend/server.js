@@ -19,13 +19,15 @@ mongoose.connect(dbURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
-// Booking Schema
+// Updated Booking Schema
 const bookingSchema = new mongoose.Schema({
   roomNumber: String,
   roomType: String,
   package: String,
   extraDetails: String,
-  date: Date
+  checkIn: Date,
+  checkOut: Date,
+  num_of_nights: Number, // New field to store the number of nights
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -40,13 +42,16 @@ app.get('/bookings', async (req, res) => {
   }
 });
 
+// Routes
 app.post('/bookings', async (req, res) => {
   const booking = new Booking({
     roomNumber: req.body.roomNumber,
     roomType: req.body.roomType,
     package: req.body.package,
     extraDetails: req.body.extraDetails,
-    date: req.body.date
+    checkIn: req.body.checkIn, // Save check-in date
+    checkOut: req.body.checkOut, // Save check-out date
+    num_of_nights: req.body.num_of_nights, // Save number of nights
   });
 
   try {
@@ -65,7 +70,14 @@ app.put('/bookings/:id', async (req, res) => {
       booking.roomType = req.body.roomType;
       booking.package = req.body.package;
       booking.extraDetails = req.body.extraDetails;
-      booking.date = req.body.date;
+      booking.checkIn = req.body.checkIn; // Update check-in date
+      booking.checkOut = req.body.checkOut; // Update check-out date
+
+      // Automatically calculate the number of nights
+      const checkInDate = new Date(req.body.checkIn);
+      const checkOutDate = new Date(req.body.checkOut);
+      booking.num_of_nights = (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24);
+
       const updatedBooking = await booking.save();
       res.json(updatedBooking);
     } else {
@@ -75,6 +87,7 @@ app.put('/bookings/:id', async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+
 
 app.delete('/bookings/:id', async (req, res) => {
   try {
