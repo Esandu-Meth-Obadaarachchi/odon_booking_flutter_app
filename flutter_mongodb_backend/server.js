@@ -14,7 +14,12 @@ app.use(bodyParser.json());
 // hello12345hello@cluster1
 
 // MongoDB connection
-const dbURI = 'mongodb+srv://esandu123:hello12345hello@cluster1.wer9edk.mongodb.net/hotel?retryWrites=true&w=majority&appName=Cluster1';
+//const dbURI = 'mongodb+srv://esandu123:hello12345hello@cluster1.wer9edk.mongodb.net/hotel?retryWrites=true&w=majority&appName=Cluster1';
+//mongoose.connect(dbURI)
+//  .then(() => console.log('MongoDB connected'))
+//  .catch(err => console.log(err));
+
+const dbURI = process.env.MONGODB_URI || 'mongodb://localhost/hotel';
 mongoose.connect(dbURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
