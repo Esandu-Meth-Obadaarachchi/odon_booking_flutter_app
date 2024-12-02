@@ -6,23 +6,19 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
+// Middlewaren
 app.use(cors());
 app.use(bodyParser.json());
 
 // Remove this line, as it's invalid JavaScript
 // hello12345hello@cluster1
 
-// MongoDB connection
-//const dbURI = 'mongodb+srv://esandu123:hello12345hello@cluster1.wer9edk.mongodb.net/hotel?retryWrites=true&w=majority&appName=Cluster1';
-//mongoose.connect(dbURI)
-//  .then(() => console.log('MongoDB connected'))
-//  .catch(err => console.log(err));
-
-const dbURI = process.env.MONGODB_URI || 'mongodb://localhost/hotel';
+ //MongoDB connection
+const dbURI = 'mongodb+srv://esandu123:hello12345hello@cluster1.wer9edk.mongodb.net/hotel?retryWrites=true&w=majority&appName=Cluster1';
 mongoose.connect(dbURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
+
 
 // Updated Booking Schema
 const bookingSchema = new mongoose.Schema({
@@ -109,6 +105,6 @@ app.delete('/bookings/:id', async (req, res) => {
 });
 
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(port, "0.0.0.0",() => {
+  console.log(`Server running on port http://15.207.116.36:3000`);
 });

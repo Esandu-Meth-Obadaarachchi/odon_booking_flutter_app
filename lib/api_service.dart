@@ -4,30 +4,9 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
 
-  final String baseUrl = 'http://192.168.1.26:3000'; // Replace with your actual server URL
+  final String baseUrl = 'http://15.207.116.36:3000';
 
-  // Future<String> _getLocalIpAddress() async {
-  //   try {
-  //     List<NetworkInterface> interfaces = await NetworkInterface.list();
-  //     for (var interface in interfaces) {
-  //       for (var address in interface.addresses) {
-  //         if (address.type == InternetAddressType.IPv4 && !address.isLoopback) {
-  //           return address.address; // Return the first found IPv4 address
-  //         }
-  //       }
-  //     }
-  //   } catch (e) {
-  //     print('Error getting IP address: $e');
-  //     throw Exception('Failed to get local IP address');
-  //   }
-  //   return '127.0.0.1'; // Fallback to localhost if no IP is found
-  // }
-  //
-  // Future<String> _getBaseUrl() async {
-  //   String ip = await _getLocalIpAddress();
-  //   print(ip);
-  //   return 'http://$ip:3000'; // Adjust port if needed
-  // }
+
 
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
     //final String baseUrl = await _getBaseUrl();
@@ -136,3 +115,4 @@ class ApiService {
 
 
 }
+//ipconfig getifaddr en0
