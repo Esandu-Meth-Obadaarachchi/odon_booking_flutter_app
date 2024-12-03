@@ -54,6 +54,9 @@ class _PastBookingsScreenState extends State<PastBookingsScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        iconTheme: IconThemeData(
+          color: Colors.white,
+        ),
         backgroundColor: Colors.indigo,
       ),
       body: Padding(

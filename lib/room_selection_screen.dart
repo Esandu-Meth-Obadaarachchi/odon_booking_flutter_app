@@ -225,6 +225,45 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Room Type Details Section
+              if (widget.floor == 'Ground Floor') ...[
+                Text(
+                  'Room Details:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.indigo,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '2 - Double\n3 - Triple\n(Note: Rooms 2, 3, and 5 do not have hot water working. Room 4 is the Manager\'s room.)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(height: 16),
+              ],
+              if (widget.floor == 'First Floor') ...[
+                Text(
+                  'Room Details:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.indigo,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '102 - Double , 103 - Triple , 104 - Double , 105 - Double , 106 - Triple',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(height: 16),
+              ],
               // Row for Check-In and Check-Out Buttons
               Row(
                 children: [

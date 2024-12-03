@@ -16,7 +16,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
   DateTime? _selectedDay;
   List<Map<String, dynamic>> _bookingsForSelectedDay = [];
   Map<DateTime, List> _events = {};
-
+  int _totalBookingsForMonth = 0; // Total bookings for the current month
   final ApiService _apiService = ApiService();
 
   @override
@@ -44,15 +44,22 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
     try {
       final bookings = await _apiService.fetchFutureBookings(DateTime.now());
       Map<DateTime, List> events = {};
+      int totalBookings = 0;
+
       for (var booking in bookings) {
         DateTime checkInDate = DateTime.parse(booking['checkIn']);
+        if (checkInDate.year == _focusedDay.year && checkInDate.month == _focusedDay.month) {
+          totalBookings++;
+        }
         if (events[checkInDate] == null) {
           events[checkInDate] = [];
         }
         events[checkInDate]!.add(booking);
       }
+
       setState(() {
         _events = events;
+        _totalBookingsForMonth = totalBookings; // Update total bookings
       });
     } catch (e) {
       print('Failed to fetch future bookings: $e');
@@ -84,6 +91,43 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Display total bookings for the month
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: Colors.indigo[50],
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Total Rooms Booked: ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  Text(
+                    '$_totalBookingsForMonth',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16.0),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -120,7 +164,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                   setState(() {
                     _focusedDay = focusedDay;
                   });
-                  _fetchBookingsForDay(focusedDay);
+                  _fetchFutureBookings();
                 },
                 eventLoader: _getEventsForDay,
                 calendarStyle: CalendarStyle(
