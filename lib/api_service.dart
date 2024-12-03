@@ -18,6 +18,7 @@ class ApiService {
       throw Exception('Failed to fetch future bookings: ${response.reasonPhrase}');
     }
   }
+
   // Fetch bookings for the selected date range
   Future<List<Map<String, dynamic>>> fetchBookingsForDateRange(DateTime checkInDate, DateTime checkOutDate) async {
     //final String baseUrl = await _getBaseUrl();
@@ -41,6 +42,7 @@ class ApiService {
       throw Exception('Failed to fetch bookings');
     }
   }
+
   Future<List<Map<String, dynamic>>> fetchBookingsForMonth(DateTime month) async {
     //final String baseUrl = await _getBaseUrl();
     // Get the start and end of the selected month

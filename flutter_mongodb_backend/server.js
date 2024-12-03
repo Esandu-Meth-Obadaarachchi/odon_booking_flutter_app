@@ -108,3 +108,8 @@ app.delete('/bookings/:id', async (req, res) => {
 app.listen(port, "0.0.0.0",() => {
   console.log(`Server running on port http://15.207.116.36:3000`);
 });
+
+
+
+
+

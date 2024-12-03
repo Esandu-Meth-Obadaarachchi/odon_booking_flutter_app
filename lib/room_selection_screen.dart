@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'api_service.dart';
-//now WHAT I HAVE TO DO IS PUT A SCREEN TO ASSIGN ROOM TYPE TO ROOMS , AND ALSO BLOCKING BOOKED ONES DOESNT WORK
+
 class RoomSelectionScreen extends StatefulWidget {
   final String floor;
   final int rooms;
@@ -155,8 +155,10 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
 
     for (int roomNumber in _selectedRooms) {
       // Assuming normalizedCheckInDate and normalizedCheckOutDate are DateTime objects
-      final newCheckInDate = normalizedCheckInDate.add(Duration(days: 1));
-      final newCheckOutDate = normalizedCheckOutDate.add(Duration(days: 1));
+      // final newCheckInDate = normalizedCheckInDate.add(Duration(days: 1));
+      // final newCheckOutDate = normalizedCheckOutDate.add(Duration(days: 1));
+      final newCheckInDate = normalizedCheckInDate;
+      final newCheckOutDate = normalizedCheckOutDate;
       //
       final newBooking = {
         'roomNumber': roomNumber.toString(),
@@ -208,7 +210,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           widget.floor,
           style: TextStyle(
             color: Colors.white,
-            fontFamily: 'outfit',
+            fontFamily: 'Outfit',
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -219,78 +221,86 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextButton(
-              onPressed: () => _selectCheckInDate(context),
-              child: Text(
-                _checkInDate == null
-                    ? 'Select Check-In Date'
-                    : DateFormat('yyyy-MM-dd').format(_checkInDate!),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Row for Check-In and Check-Out Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildElevatedButton(
+                      label: _checkInDate == null
+                          ? 'Select Check-In Date'
+                          : DateFormat('yyyy-MM-dd').format(_checkInDate!),
+                      onPressed: () => _selectCheckInDate(context),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildElevatedButton(
+                      label: _checkOutDate == null
+                          ? 'Select Check-Out Date'
+                          : DateFormat('yyyy-MM-dd').format(_checkOutDate!),
+                      onPressed: () => _selectCheckOutDate(context),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Number of Nights
+              Text(
+                'Number of Nights: $_numOfNights',
                 style: TextStyle(fontSize: 16),
               ),
-            ),
-            TextButton(
-              onPressed: () => _selectCheckOutDate(context),
-              child: Text(
-                _checkOutDate == null
-                    ? 'Select Check-Out Date'
-                    : DateFormat('yyyy-MM-dd').format(_checkOutDate!),
-                style: TextStyle(fontSize: 16),
+              const SizedBox(height: 20),
+              // Room Type Dropdown
+              _buildDropdownContainer(
+                label: 'Select Room Type',
+                value: _roomType,
+                items: ['Family', 'Family Plus', 'Triple', 'Double'],
+                onChanged: (value) {
+                  setState(() {
+                    _roomType = value;
+                  });
+                },
               ),
-            ),
-            Text(
-              'Number of Nights: $_numOfNights',
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              value: _roomType,
-              decoration: InputDecoration(labelText: 'Select Room Type'),
-              items: ['Family', 'Family Plus', 'Triple', 'Double']
-                  .map((label) => DropdownMenuItem(
-                child: Text(label),
-                value: label,
-              ))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _roomType = value;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              value: _packageType,
-              decoration: InputDecoration(labelText: 'Select Package Type'),
-              items: ['Full Board', 'Half Board', 'Room Only', 'BnB']
-                  .map((label) => DropdownMenuItem(
-                child: Text(label),
-                value: label,
-              ))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _packageType = value;
-                });
-              },
-            ),
-            TextField(
-              controller: _extraDetailsController,
-              decoration: InputDecoration(labelText: 'Extra Details'),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Container(
+              const SizedBox(height: 20),
+              // Package Type Dropdown
+              _buildDropdownContainer(
+                label: 'Select Package Type',
+                value: _packageType,
+                items: ['Full Board', 'Half Board', 'Room Only', 'BnB'],
+                onChanged: (value) {
+                  setState(() {
+                    _packageType = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              // Extra Details
+              _buildTextFieldContainer(
+                controller: _extraDetailsController,
+                labelText: 'Extra Details',
+              ),
+              const SizedBox(height: 20),
+              // Room Selection Grid
+              Container(
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.shade300,
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
                     mainAxisSpacing: 16,
@@ -306,7 +316,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
 
                     return ElevatedButton(
                       onPressed: isBooked
-                          ? null // Disable button if room is booked
+                          ? null
                           : () {
                         setState(() {
                           if (_selectedRooms.contains(roomNumber)) {
@@ -319,16 +329,18 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.black,
                         backgroundColor: isBooked
-                            ? Colors.red // Mark booked rooms in red
+                            ? Colors.red
                             : (_selectedRooms.contains(roomNumber)
                             ? Colors.green
                             : Colors.white),
                         padding: EdgeInsets.all(8.0),
+                        elevation: 4,
+                        shadowColor: Colors.grey.shade400,
                       ),
                       child: Text(
                         roomNumber.toString().padLeft(3, '0'),
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -336,27 +348,111 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   },
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: _saveBooking,
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.indigo,
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                ),
-                child: Text(
-                  'Save Booking',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+              const SizedBox(height: 20),
+              // Save Button
+              Center(
+                child: ElevatedButton(
+                  onPressed: _saveBooking,
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.indigo,
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    elevation: 6,
+                  ),
+                  child: Text(
+                    'Save Booking',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+// Helper Widgets
+  Widget _buildElevatedButton({required String label, required VoidCallback onPressed}) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        foregroundColor: Colors.indigo,
+        backgroundColor: Colors.white,
+        side: BorderSide(color: Colors.indigo, width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: 4,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownContainer({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        decoration: InputDecoration(border: InputBorder.none, labelText: label),
+        items: items
+            .map((label) => DropdownMenuItem(
+          child: Text(label),
+          value: label,
+        ))
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildTextFieldContainer({
+    required TextEditingController controller,
+    required String labelText,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          labelText: labelText,
+        ),
+        maxLines: 3,
       ),
     );
   }
