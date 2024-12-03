@@ -1,12 +1,9 @@
-// lib/home_screen.dart
-
 import 'package:flutter/material.dart';
 import 'room_selection_screen.dart';
 import 'view_bookings_screen.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,7 +23,21 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Logo at the top center
             Expanded(
+              flex: 2,
+              child: Center(
+                child: Image.asset(
+                  'assets/logo.JPG',
+                  height: 300,
+                  width: 300,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            // Button Section
+            Expanded(
+              flex: 3,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -105,23 +116,48 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+            // Footer Section
             const Divider(
               color: Colors.grey, // Color of the horizontal line
               thickness: 1, // Thickness of the line
             ),
-            IconButton(
-              icon: Icon(Icons.logout),
-              color: Colors.red,
-              onPressed: () {
-                // Navigate back to the login screen
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => LoginScreen(),
+            Column(
+              children: [
+                const Text(
+                  'Made by Esandu Obadaarachchi',
+                  style: TextStyle(
+                    fontFamily: 'Dancing Script',
+                    fontSize: 16,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold
                   ),
-                      (Route<dynamic> route) => false,
-                );
-              },
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'ODON (Pvt) Ltd',
+                  style: TextStyle(
+                    fontFamily: 'Pacifico',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.indigo,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                IconButton(
+                  icon: Icon(Icons.logout),
+                  color: Colors.red,
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LoginScreen(),
+                      ),
+                          (Route<dynamic> route) => false,
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),
