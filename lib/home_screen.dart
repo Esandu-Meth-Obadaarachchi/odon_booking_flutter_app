@@ -25,19 +25,21 @@ class HomeScreen extends StatelessWidget {
           children: [
             // Logo at the top center
             Expanded(
-              flex: 2,
+              flex: 1,  // Reduced flex value to allocate less space for the logo
               child: Center(
                 child: Image.asset(
                   'assets/logo.JPG',
-                  height: 300,
+                  height: 300,  // Adjusted the logo size to be smaller
                   width: 300,
                   fit: BoxFit.contain,
                 ),
               ),
             ),
+            // Spacer between the image and button section
+
             // Button Section
             Expanded(
-              flex: 3,
+              flex: 2,  // Increased flex value to allocate more space for the button container
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -117,6 +119,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             // Footer Section
+            const SizedBox(height: 70),
             const Divider(
               color: Colors.grey, // Color of the horizontal line
               thickness: 1, // Thickness of the line
@@ -130,7 +133,7 @@ class HomeScreen extends StatelessWidget {
                     fontSize: 16,
                     fontStyle: FontStyle.italic,
                     color: Colors.grey,
-                    fontWeight: FontWeight.bold
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 4),
