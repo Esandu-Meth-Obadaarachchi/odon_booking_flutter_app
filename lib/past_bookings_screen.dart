@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'api_service.dart';
-import 'edit_booking_screen.dart';
-import 'future_bookings_screen.dart'; // Import the correct file
 
 class PastBookingsScreen extends StatefulWidget {
-
   @override
   _PastBookingsScreenState createState() => _PastBookingsScreenState();
 }
@@ -55,7 +50,7 @@ class _PastBookingsScreenState extends State<PastBookingsScreen> {
           'Past Bookings',
           style: TextStyle(
             color: Colors.white,
-            fontFamily: 'outfit',
+            fontFamily: 'Outfit',
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -65,16 +60,37 @@ class _PastBookingsScreenState extends State<PastBookingsScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            ElevatedButton(
+            OutlinedButton.icon(
               onPressed: () => _selectMonth(context),
-              child: Text(
+              icon: Icon(Icons.calendar_today, color: Colors.indigo),
+              label: Text(
                 'Select Month',
+                style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.indigo),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 20.0),
             Expanded(
               child: _bookingsForSelectedMonth.isEmpty
-                  ? Center(child: Text('No bookings for selected month'))
+                  ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.event_busy, color: Colors.grey, size: 80),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No bookings for selected month',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              )
                   : ListView.builder(
                 itemCount: _bookingsForSelectedMonth.length,
                 itemBuilder: (context, index) {
@@ -89,34 +105,44 @@ class _PastBookingsScreenState extends State<PastBookingsScreen> {
 
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8.0),
-                    elevation: 3.0,
-                    child: ListTile(
-                      title: Text(
-                        'Room ${booking['roomNumber'] ?? 'N/A'}',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 5.0,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Display Check-in, Check-out, and Number of Nights
+                          Text(
+                            'Room ${booking['roomNumber'] ?? 'N/A'}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.indigo,
+                            ),
+                          ),
+                          const Divider(),
                           Text(
                             'Check-in: ${_formatDate(checkInDate)}',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 16),
                           ),
                           Text(
                             'Check-out: ${checkOutDate != null ? _formatDate(checkOutDate) : 'N/A'}',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 16),
                           ),
                           Text(
                             'Nights: $numOfNights',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 16),
                           ),
-                          // Display Room Type, Package, and Extra Details
+                          const SizedBox(height: 8),
                           Text(
                             'Type: ${booking['roomType'] ?? 'N/A'}, Package: ${booking['package'] ?? 'N/A'}',
+                            style: TextStyle(fontSize: 14, color: Colors.black54),
                           ),
                           Text(
                             'Details: ${booking['extraDetails'] ?? 'N/A'}',
+                            style: TextStyle(fontSize: 14, color: Colors.black54),
                           ),
                         ],
                       ),
@@ -136,4 +162,3 @@ class _PastBookingsScreenState extends State<PastBookingsScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 }
-

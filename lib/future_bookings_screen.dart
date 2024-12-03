@@ -22,14 +22,12 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
       final DateTime currentDate = DateTime.now();
       final bookings = await _apiService.fetchFutureBookings(currentDate);
 
-      // Filter out bookings that have already checked out
+      // Filter and sort bookings
       final filteredBookings = bookings.where((booking) {
         DateTime checkInDate = DateTime.parse(booking['checkIn']);
-        return checkInDate.isAfter(currentDate); // Only include bookings with future check-ins
-      }).toList();
-
-      // Sort filtered bookings by check-in date in ascending order
-      filteredBookings.sort((a, b) => DateTime.parse(a['checkIn']).compareTo(DateTime.parse(b['checkIn'])));
+        return checkInDate.isAfter(currentDate);
+      }).toList()
+        ..sort((a, b) => DateTime.parse(a['checkIn']).compareTo(DateTime.parse(b['checkIn'])));
 
       setState(() {
         _futureBookings = filteredBookings;
@@ -53,71 +51,110 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
         ),
         backgroundColor: Colors.indigo,
         iconTheme: IconThemeData(
-          color: Colors.white, // Sets the back arrow color to white
+          color: Colors.white,
         ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: _futureBookings.isEmpty
-            ? Center(child: Text('No future bookings found'))
+            ? Center(
+          child: Text(
+            'No future bookings found',
+            style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+          ),
+        )
             : ListView.builder(
           itemCount: _futureBookings.length,
           itemBuilder: (context, index) {
             final booking = _futureBookings[index];
 
-            // Parse check-in, check-out, and number of nights fields
+            // Parse dates and data
             DateTime checkInDate = DateTime.parse(booking['checkIn']);
             DateTime? checkOutDate = booking['checkOut'] != null
                 ? DateTime.parse(booking['checkOut'])
                 : null;
             final numOfNights = booking['num_of_nights'] ?? 'N/A';
 
-            return ListTile(
-              title: Text(
-                'Room Number: ${booking['roomNumber'] as String? ?? 'N/A'}',
-                style: TextStyle(fontWeight: FontWeight.bold),
+            return Card(
+              elevation: 4.0,
+              margin: const EdgeInsets.symmetric(vertical: 8.0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
               ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Display Check-in, Check-out, and Number of Nights
-                  Text(
-                    'Check-in: ${_formatDate(checkInDate)}',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    'Check-out: ${checkOutDate != null ? _formatDate(checkOutDate) : 'N/A'}',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    'Nights: $numOfNights',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  // Display Room Type, Package, and Extra Details
-                  Text(
-                    'Type: ${booking['roomType'] ?? 'N/A'}, Package: ${booking['package'] ?? 'N/A'}',
-                  ),
-                  Text(
-                    'Details: ${booking['extraDetails'] ?? 'N/A'}',
-                  ),
-                ],
-              ),
-              trailing: IconButton(
-                icon: Icon(Icons.edit),
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => EditBookingScreen(
-                        booking: booking,
-                        selectedDay: checkInDate,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Room Number: ${booking['roomNumber'] +" => "+_formatDate(checkInDate).toString() as String? ?? 'N/A'}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0,
+                        color: Colors.indigo,
                       ),
                     ),
-                  );
-                  if (result == true) {
-                    _fetchFutureBookings(); // Reload bookings after edit
-                  }
-                },
+                    const SizedBox(height: 8.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildBookingDetail(
+                          'Check-in',
+                          _formatDate(checkInDate).toString(),
+                        ),
+                        _buildBookingDetail(
+                          'Check-out',
+                          checkOutDate != null
+                              ? _formatDate(checkOutDate).toString()
+                              : 'N/A',
+                        ),
+                        _buildBookingDetail('Nights', numOfNights.toString()),
+                      ],
+                    ),
+                    const SizedBox(height: 16.0),
+                    Text(
+                      'Type: ${booking['roomType'] ?? 'N/A'}, Package: ${booking['package'] ?? 'N/A'}',
+                      style: TextStyle(fontSize: 14.0),
+                    ),
+                    const SizedBox(height: 8.0),
+                    Text(
+                      'Details: ${booking['extraDetails'] ?? 'N/A'}',
+                      style: TextStyle(fontSize: 14.0, color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 16.0),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditBookingScreen(
+                                booking: booking,
+                                selectedDay: checkInDate,
+                              ),
+                            ),
+                          );
+                          if (result == true) {
+                            _fetchFutureBookings();
+                          }
+                        },
+                        icon: Icon(Icons.edit, size: 18,color: Colors.white,),
+                        label: Text(
+                          'Edit Booking',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 8.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -126,8 +163,32 @@ class _FutureBookingsScreenState extends State<FutureBookingsScreen> {
     );
   }
 
-  // Utility to format DateTime as 'DD/MM/YYYY'
+  // Helper to format date
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  // Helper to build individual booking details
+  Widget _buildBookingDetail(String title, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 12.0,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[600],
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14.0,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 }
