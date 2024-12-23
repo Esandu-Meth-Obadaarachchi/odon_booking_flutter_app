@@ -44,22 +44,30 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
     try {
       final bookings = await _apiService.fetchFutureBookings(DateTime.now());
       Map<DateTime, List> events = {};
-      int totalBookings = 0;
+      int totalRoomNights = 0;
 
       for (var booking in bookings) {
         DateTime checkInDate = DateTime.parse(booking['checkIn']);
+        DateTime checkOutDate = DateTime.parse(booking['checkOut']);
+
+        // Calculate the number of nights for the booking
+        int nights = checkOutDate.difference(checkInDate).inDays;
+
+        // Add to total room-nights
+        totalRoomNights += nights;
+
+        // Populate events map for the calendar
         if (checkInDate.year == _focusedDay.year && checkInDate.month == _focusedDay.month) {
-          totalBookings++;
+          if (events[checkInDate] == null) {
+            events[checkInDate] = [];
+          }
+          events[checkInDate]!.add(booking);
         }
-        if (events[checkInDate] == null) {
-          events[checkInDate] = [];
-        }
-        events[checkInDate]!.add(booking);
       }
 
       setState(() {
         _events = events;
-        _totalBookingsForMonth = totalBookings; // Update total bookings
+        _totalBookingsForMonth = totalRoomNights; // Update total room-nights
       });
     } catch (e) {
       print('Failed to fetch future bookings: $e');
@@ -140,7 +148,8 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                   ),
                 ],
               ),
-              child: TableCalendar(
+              child:
+              TableCalendar(
                 firstDay: DateTime.utc(2020, 1, 1),
                 lastDay: DateTime.utc(2030, 12, 31),
                 focusedDay: _focusedDay,
@@ -168,20 +177,57 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                 },
                 eventLoader: _getEventsForDay,
                 calendarStyle: CalendarStyle(
-                  markerDecoration: BoxDecoration(
-                    color: Colors.indigo,
+                  todayDecoration: BoxDecoration(
+                    color: Colors.orange,
                     shape: BoxShape.circle,
                   ),
                   selectedDecoration: BoxDecoration(
                     color: Colors.green,
                     shape: BoxShape.circle,
                   ),
-                  todayDecoration: BoxDecoration(
-                    color: Colors.orange,
-                    shape: BoxShape.circle,
-                  ),
+                  markerDecoration: BoxDecoration(), // Removes the default marker dots
                 ),
-              ),
+                calendarBuilders: CalendarBuilders(
+                  defaultBuilder: (context, day, focusedDay) {
+                    final events = _getEventsForDay(day);
+                    return Center(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: day == _selectedDay ? Colors.green : Colors.white,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${day.day}', // Show the day number
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: day == _focusedDay ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ),
+                          if (events.isNotEmpty)
+                            Positioned(
+                              bottom: -3, // Adjusted for better placement
+                              child: Text(
+                                '${events.length}', // Show the number of bookings
+                                style: TextStyle(
+                                  fontSize: 14, // Increased font size
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              )
             ),
             const SizedBox(height: 16.0),
             Row(
