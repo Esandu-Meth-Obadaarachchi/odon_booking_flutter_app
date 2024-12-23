@@ -73,10 +73,7 @@ class ApiService {
     }
   }
 
-
-
-  Future<void> updateBooking(String id, Map<String, String> updatedBooking) async {
-    //final String baseUrl = await _getBaseUrl();
+  Future<void> updateBooking(String id, Map<String, dynamic> updatedBooking) async {
     final response = await http.put(
       Uri.parse('$baseUrl/bookings/$id'),
       headers: <String, String>{

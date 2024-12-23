@@ -4,6 +4,7 @@ import 'api_service.dart';
 import 'edit_booking_screen.dart';
 import 'future_bookings_screen.dart';
 import 'past_bookings_screen.dart';
+import 'selected_day_booking.dart';
 
 class ViewBookingsScreen extends StatefulWidget {
   @override
@@ -273,7 +274,34 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 16.0), // Add spacing between rows
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SelectedDayBookingsScreen(
+                          selectedDay: _selectedDay ?? _focusedDay,
+                          bookings: _bookingsForSelectedDay,
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.green,
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                  child: Text(
+                    "View Selected Day's Bookings",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
             Expanded(
               child: _bookingsForSelectedDay.isEmpty
                   ? Center(
