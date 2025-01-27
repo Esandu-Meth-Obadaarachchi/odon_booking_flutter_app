@@ -6,7 +6,6 @@ class ApiService {
 
   final String baseUrl = 'http://15.207.116.36:3000';
   // final String baseUrl = 'http://192.168.1.26:3000';
-  //
 
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
     //final String baseUrl = await _getBaseUrl();
@@ -111,6 +110,22 @@ class ApiService {
       throw Exception('Failed to add booking: ${response.reasonPhrase}');
     }
   }
+
+  Future<void> addInventory(Map<String, dynamic> newBooking) async {
+    //final String baseUrl = await _getBaseUrl();
+    final response = await http.post(
+      Uri.parse('$baseUrl/inventory'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(newBooking),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to add booking: ${response.reasonPhrase}');
+    }
+  }
+
 
 
 }

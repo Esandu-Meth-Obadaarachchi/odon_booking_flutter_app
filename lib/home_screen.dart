@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'room_selection_screen.dart';
 import 'view_bookings_screen.dart';
 import 'login_screen.dart';
-
+import ' add_inventory_item_screen.dart';
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -81,6 +81,22 @@ class HomeScreen extends StatelessWidget {
                             backgroundColor: Colors.indigo,
                           ),
                           child: const Text('View Bookings'),
+                        ),
+                        const SizedBox(height: 20), // Space between buttons
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddInventoryItemScreen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.indigo,
+                          ),
+                          child: const Text('Inventory Management'),
                         ),
                       ],
                     ),

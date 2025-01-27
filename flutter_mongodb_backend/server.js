@@ -131,6 +131,64 @@ app.get('/', (req, res) => {
 //});
 
 
+// Inventory Schema
+const inventorySchema = new mongoose.Schema({
+  item_name: { type: String, required: true }, // Item name
+  quantity: { type: Number, required: true, default: 0 }, // Quantity
+  purchasedDate: Date,
+  uploaded_time: { type: Date, default: Date.now }, // Timestamp of record creation/update
+});
+
+const Inventory = mongoose.model('Inventory', inventorySchema);
+
+
+// Inventory Routes
+
+// Get all inventory items
+app.get('/inventory', async (req, res) => {
+  try {
+    const items = await Inventory.find();
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Add or update an inventory item
+app.post('/inventory', async (req, res) => {
+  const { item_name, quantity, purchasedDate} = req.body;
+
+  if (!item_name || quantity == null) {
+    return res.status(400).json({ message: 'Item ID, name, and quantity are required' });
+  }
+
+  try {
+    const existingItem = await Inventory.findOne({item_name});
+
+    if (existingItem) {
+      // If the item exists, update its quantity
+      existingItem.quantity += quantity;
+      existingItem.uploaded_time = Date.now();
+      const updatedItem = await existingItem.save();
+      existingItem.purchasedDate = purchasedDate;
+      res.json(updatedItem);
+    } else {
+      // If the item doesn't exist, create a new record
+      const newItem = new Inventory({
+        item_name,
+        quantity,
+        purchasedDate
+      });
+      const savedItem = await newItem.save();
+      res.status(201).json(savedItem);
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+
 
 
 
