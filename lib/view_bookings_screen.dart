@@ -43,7 +43,9 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
 
   Future<void> _fetchFutureBookings() async {
     try {
-      final bookings = await _apiService.fetchFutureBookings(DateTime.now());
+      // Fetch bookings for the focused month
+      final bookings = await _apiService.fetchBookingsForMonth(_focusedDay);
+
       Map<DateTime, List> events = {};
       int totalRoomNights = 0;
 
@@ -54,11 +56,11 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
         // Calculate the number of nights for the booking
         int nights = checkOutDate.difference(checkInDate).inDays;
 
-        // Add to total room-nights
-        totalRoomNights += nights;
+        // Add to total room-nights if within the same month
+        if (checkInDate.month == _focusedDay.month && checkInDate.year == _focusedDay.year) {
+          totalRoomNights += nights;
 
-        // Populate events map for the calendar
-        if (checkInDate.year == _focusedDay.year && checkInDate.month == _focusedDay.month) {
+          // Populate events map for the calendar
           if (events[checkInDate] == null) {
             events[checkInDate] = [];
           }

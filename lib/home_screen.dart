@@ -23,27 +23,25 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Logo at the top center
+            // Logo Section
             Expanded(
-              flex: 1,  // Reduced flex value to allocate less space for the logo
+              flex: 1,
               child: Center(
                 child: Image.asset(
                   'assets/logo.JPG',
-                  height: 300,  // Adjusted the logo size to be smaller
+                  height: 300,
                   width: 300,
                   fit: BoxFit.contain,
                 ),
               ),
             ),
-            // Spacer between the image and button section
-
-            // Button Section
             Expanded(
-              flex: 2,  // Increased flex value to allocate more space for the button container
+              flex: 2, // Allocate space for the container
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
+                    width: double.infinity, // Makes the container span the full width
                     padding: const EdgeInsets.all(16.0),
                     decoration: BoxDecoration(
                       color: Colors.grey[200], // Light grey background color
@@ -51,52 +49,24 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10.0), // Border radius
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min, // Wrap content vertically
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => RoomSelectionScreen(
-                                      floor: 'Ground Floor',
-                                      rooms: 5,
-                                      startingRoomNumber: 1,
-                                    ),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                backgroundColor: Colors.indigo, // Adjust button color
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RoomSelectionScreen(),
                               ),
-                              child: const Text('Ground Floor'),
-                            ),
-                            const SizedBox(height: 20, width: 30),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => RoomSelectionScreen(
-                                      floor: 'First Floor',
-                                      rooms: 7,
-                                      startingRoomNumber: 101,
-                                    ),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                backgroundColor: Colors.indigo, // Adjust button color
-                              ),
-                              child: const Text('First Floor'),
-                            ),
-                          ],
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.indigo,
+                          ),
+                          child: const Text('Add New Booking'),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 20), // Space between buttons
                         ElevatedButton(
                           onPressed: () {
                             Navigator.push(
@@ -108,7 +78,7 @@ class HomeScreen extends StatelessWidget {
                           },
                           style: ElevatedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            backgroundColor: Colors.indigo, // Adjust button color
+                            backgroundColor: Colors.indigo,
                           ),
                           child: const Text('View Bookings'),
                         ),
@@ -120,10 +90,7 @@ class HomeScreen extends StatelessWidget {
             ),
             // Footer Section
             const SizedBox(height: 70),
-            const Divider(
-              color: Colors.grey, // Color of the horizontal line
-              thickness: 1, // Thickness of the line
-            ),
+            const Divider(color: Colors.grey, thickness: 1),
             Column(
               children: [
                 const Text(

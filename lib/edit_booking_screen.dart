@@ -44,11 +44,14 @@ class EditBookingScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 final updatedBooking = {
+                  'num_of_nights':booking['num_of_nights'],
                   'roomNumber': roomNumberController.text,
                   'roomType': roomTypeController.text,
                   'package': packageTypeController.text,
                   'extraDetails': extraDetailsController.text,
-                  'date': selectedDay.toIso8601String(),
+                  'checkIn': booking['checkIn'],
+                  'checkOut': booking['checkOut'],
+
                 };
 
                 try {

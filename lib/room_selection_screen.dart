@@ -3,15 +3,7 @@ import 'package:intl/intl.dart';
 import 'api_service.dart';
 
 class RoomSelectionScreen extends StatefulWidget {
-  final String floor;
-  final int rooms;
-  final int startingRoomNumber;
 
-  RoomSelectionScreen({
-    required this.floor,
-    required this.rooms,
-    required this.startingRoomNumber,
-  });
 
   @override
   _RoomSelectionScreenState createState() => _RoomSelectionScreenState();
@@ -207,7 +199,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.floor,
+          "Add New Booking",
           style: TextStyle(
             color: Colors.white,
             fontFamily: 'Outfit',
@@ -223,12 +215,11 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Room Type Details Section
-              if (widget.floor == 'Ground Floor') ...[
                 Text(
-                  'Room Details:',
+                  'Room Details for GROUND FLOOR:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -244,10 +235,10 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   ),
                 ),
                 SizedBox(height: 16),
-              ],
-              if (widget.floor == 'First Floor') ...[
+
+
                 Text(
-                  'Room Details:',
+                  'Room Details for FIRST FLOOR:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -263,7 +254,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   ),
                 ),
                 SizedBox(height: 16),
-              ],
+
               // Row for Check-In and Check-Out Buttons
               Row(
                 children: [
@@ -323,7 +314,94 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                 labelText: 'Extra Details',
               ),
               const SizedBox(height: 20),
+              Text(
+                'Rooms for GROUND FLOOR:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.indigo,
+
+                ),
+              ),
               // Room Selection Grid
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.shade300,
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 1.5,
+                  ),
+                  itemCount: 5,
+                  itemBuilder: (context, index) {
+                    int roomNumber = 1 + index;
+
+                    // Check if the room is already booked for the selected date range
+                    bool isBooked = _bookedRooms.contains(roomNumber);
+
+                    return ElevatedButton(
+                      onPressed: isBooked
+                          ? null
+                          : () {
+                        setState(() {
+                          if (_selectedRooms.contains(roomNumber)) {
+                            _selectedRooms.remove(roomNumber);
+                          } else {
+                            _selectedRooms.add(roomNumber);
+                          }
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        backgroundColor: isBooked
+                            ? Colors.red
+                            : (_selectedRooms.contains(roomNumber)
+                            ? Colors.green
+                            : Colors.white),
+                        padding: EdgeInsets.all(8.0),
+                        elevation: 4,
+                        shadowColor: Colors.grey.shade400,
+                      ),
+                      child: Text(
+                        roomNumber.toString().padLeft(3, '0'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Rooms for First FLOOR:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                ],
+              ),
               Container(
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
@@ -346,9 +424,9 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                     crossAxisSpacing: 16,
                     childAspectRatio: 1.5,
                   ),
-                  itemCount: widget.rooms,
+                  itemCount: 7,
                   itemBuilder: (context, index) {
-                    int roomNumber = widget.startingRoomNumber + index;
+                    int roomNumber = 101 + index;
 
                     // Check if the room is already booked for the selected date range
                     bool isBooked = _bookedRooms.contains(roomNumber);

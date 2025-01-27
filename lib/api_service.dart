@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 class ApiService {
 
   final String baseUrl = 'http://15.207.116.36:3000';
-
-
+  // final String baseUrl = 'http://192.168.1.26:3000';
+  //
 
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
     //final String baseUrl = await _getBaseUrl();
@@ -15,7 +15,7 @@ class ApiService {
       List<dynamic> data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
     } else {
-      throw Exception('Failed to fetch future bookings: ${response.reasonPhrase}');
+      throw Exception('Failed to fetch future bookings123: ${response.reasonPhrase}');
     }
   }
 
@@ -35,11 +35,11 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         return data.map((booking) => booking as Map<String, dynamic>).toList();
       } else {
-        throw Exception('Failed to fetch bookings');
+        throw Exception('Failed to fetch bookings123');
       }
     } catch (e) {
-      print('Error fetching bookings: $e');
-      throw Exception('Failed to fetch bookings');
+      print('Error fetching bookings123: $e');
+      throw Exception('Failed to fetch bookings123');
     }
   }
 

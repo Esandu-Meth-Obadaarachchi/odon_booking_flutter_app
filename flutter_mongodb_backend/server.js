@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middlewaren
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -64,26 +64,39 @@ app.post('/bookings', async (req, res) => {
 });
 
 app.put('/bookings/:id', async (req, res) => {
+    console.log("updating product");
   try {
-    const booking = await Booking.findById(req.params.id);
-    if (booking) {
-      booking.roomNumber = req.body.roomNumber;
-      booking.roomType = req.body.roomType;
-      booking.package = req.body.package;
-      booking.extraDetails = req.body.extraDetails;
-      booking.checkIn = req.body.checkIn; // Update check-in date
-      booking.checkOut = req.body.checkOut; // Update check-out date
+    // Calculate the number of nights if check-in and check-out are provided
+    const checkInDate = new Date(req.body.checkIn);
+    const checkOutDate = new Date(req.body.checkOut);
+    const num_of_nights =
+      req.body.checkIn && req.body.checkOut
+        ? (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)
+        : undefined;
 
-      // Automatically calculate the number of nights
-      const checkInDate = new Date(req.body.checkIn);
-      const checkOutDate = new Date(req.body.checkOut);
-      booking.num_of_nights = (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24);
+    // Prepare the update data
+    const updateData = {
+      roomNumber: req.body.roomNumber,
+      roomType: req.body.roomType,
+      package: req.body.package,
+      extraDetails: req.body.extraDetails,
+      checkIn: req.body.checkIn,
+      checkOut: req.body.checkOut,
+      ...(num_of_nights !== undefined && { num_of_nights }), // Add num_of_nights if calculated
+    };
 
-      const updatedBooking = await booking.save();
-      res.json(updatedBooking);
-    } else {
-      res.status(404).json({ message: 'Booking not found' });
+    // Update booking
+    const updatedBooking = await Booking.findOneAndUpdate(
+      { _id: req.params.id },
+      updateData,
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: 'Booking not found' });
     }
+
+    res.json(updatedBooking);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -97,8 +110,9 @@ app.delete('/bookings/:id', async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    await booking.remove();
-    res.json({ message: 'Booking deleted' });
+    // Use deleteOne for the document
+    await Booking.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Booking deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -108,6 +122,13 @@ app.delete('/bookings/:id', async (req, res) => {
 app.listen(port, "0.0.0.0",() => {
   console.log(`Server running on port http://15.207.116.36:3000`);
 });
+app.get('/', (req, res) => {
+    res.send('🟢 Server is running!');
+});
+// Run server on localhost
+//app.listen(port, '192.168.1.26', () => {
+//  console.log(`Server running on http://192.168.1.26:${port}`);
+//});
 
 
 
