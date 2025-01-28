@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
 
-  final String baseUrl = 'http://15.207.116.36:3000';
-  // final String baseUrl = 'http://192.168.1.26:3000';
+  // final String baseUrl = 'http://15.207.116.36:3000';
+  final String baseUrl = 'http://192.168.1.26:3000';
 
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
     //final String baseUrl = await _getBaseUrl();
@@ -95,7 +95,6 @@ class ApiService {
     }
   }
 
-
   Future<void> addBooking(Map<String, dynamic> newBooking) async {
     //final String baseUrl = await _getBaseUrl();
     final response = await http.post(
@@ -126,7 +125,22 @@ class ApiService {
     }
   }
 
+  Future<List<dynamic>> fetchInventoryItems() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/inventory'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to fetch inventory items: ${response.reasonPhrase}');
+    }
+  }
 
 
 }
+
 //ipconfig getifaddr en0

@@ -18,8 +18,18 @@ class EditBookingScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Booking'),
+        title: Text(
+          "Edit Booking",
+          style: TextStyle(
+            color: Colors.white,
+            fontFamily: 'Outfit',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Colors.indigo,
+        iconTheme: IconThemeData(
+          color: Colors.white,
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -123,4 +133,5 @@ class EditBookingScreen extends StatelessWidget {
       ),
     );
   }
+
 }

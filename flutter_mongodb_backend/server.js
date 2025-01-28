@@ -102,7 +102,6 @@ app.put('/bookings/:id', async (req, res) => {
   }
 });
 
-
 app.delete('/bookings/:id', async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -118,17 +117,18 @@ app.delete('/bookings/:id', async (req, res) => {
   }
 });
 
+//app.listen(port, "0.0.0.0",() => {
+//  console.log(`Server running on port http://15.207.116.36:3000`);
+//});
 
-app.listen(port, "0.0.0.0",() => {
-  console.log(`Server running on port http://15.207.116.36:3000`);
-});
 app.get('/', (req, res) => {
     res.send('🟢 Server is running!');
 });
-// Run server on localhost
-//app.listen(port, '192.168.1.26', () => {
-//  console.log(`Server running on http://192.168.1.26:${port}`);
-//});
+
+//Run server on localhost
+app.listen(port, '192.168.1.26', () => {
+  console.log(`Server running on http://192.168.1.26:${port}`);
+});
 
 
 // Inventory Schema
@@ -143,7 +143,6 @@ const Inventory = mongoose.model('Inventory', inventorySchema);
 
 
 // Inventory Routes
-
 // Get all inventory items
 app.get('/inventory', async (req, res) => {
   try {
