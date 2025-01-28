@@ -140,6 +140,19 @@ class ApiService {
     }
   }
 
+  Future<void> updateInventoryItem(String id, Map<String, dynamic> updatedItem) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/inventory/$id'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(updatedItem),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update inventory item: ${response.reasonPhrase}');
+    }
+  }
 
 }
 

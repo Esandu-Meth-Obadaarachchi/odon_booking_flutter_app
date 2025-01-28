@@ -186,6 +186,32 @@ app.post('/inventory', async (req, res) => {
   }
 });
 
+app.put('/inventory/:id', async (req, res) => {
+  console.log("Updating inventory item");
+  try {
+    // Prepare the update data
+    const updateData = {
+      item_name: req.body.item_name,
+      quantity: req.body.quantity,
+      purchasedDate: req.body.purchasedDate
+    };
+
+    // Update inventory item
+    const updatedInventoryItem = await Inventory.findOneAndUpdate(
+      { _id: req.params.id },
+      updateData,
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedInventoryItem) {
+      return res.status(404).json({ message: 'Inventory item not found' });
+    }
+
+    res.json(updatedInventoryItem);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 
 
 
