@@ -29,6 +29,8 @@ const bookingSchema = new mongoose.Schema({
   checkIn: Date,
   checkOut: Date,
   num_of_nights: Number, // New field to store the number of nights
+  total : String,
+  advance : String
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -53,6 +55,8 @@ app.post('/bookings', async (req, res) => {
     checkIn: req.body.checkIn, // Save check-in date
     checkOut: req.body.checkOut, // Save check-out date
     num_of_nights: req.body.num_of_nights, // Save number of nights
+    total : req.body.total,
+    advance : req.body.advance
   });
 
   try {
@@ -83,6 +87,9 @@ app.put('/bookings/:id', async (req, res) => {
       checkIn: req.body.checkIn,
       checkOut: req.body.checkOut,
       ...(num_of_nights !== undefined && { num_of_nights }), // Add num_of_nights if calculated
+      total : req.body.total,
+      advance : req.body.advance
+
     };
 
     // Update booking
@@ -125,7 +132,7 @@ app.get('/', (req, res) => {
     res.send('🟢 Server is running!');
 });
 
-//Run server on localhost
+////Run server on localhost
 app.listen(port, '192.168.1.26', () => {
   console.log(`Server running on http://192.168.1.26:${port}`);
 });

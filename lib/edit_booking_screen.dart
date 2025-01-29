@@ -5,8 +5,18 @@ class EditBookingScreen extends StatelessWidget {
   final Map<String, dynamic> booking;
   final DateTime selectedDay;
   final ApiService _apiService = ApiService();
-
+  String  balance = "N/A";
   EditBookingScreen({required this.booking, required this.selectedDay});
+
+  void calBalance(TextEditingController totalController, TextEditingController advanceController) {
+    try {
+      final int total = int.tryParse(totalController.text) ?? 0;
+      final int advance = int.tryParse(advanceController.text) ?? 0;
+      balance = (total - advance).toString(); // Corrected type conversion
+    } catch (e) {
+      print(e);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +25,18 @@ class EditBookingScreen extends StatelessWidget {
     TextEditingController roomTypeController = TextEditingController(text: booking['roomType'] as String? ?? '');
     TextEditingController packageTypeController = TextEditingController(text: booking['package'] as String? ?? '');
     TextEditingController extraDetailsController = TextEditingController(text: booking['extraDetails'] as String? ?? '');
+    TextEditingController totalController = TextEditingController(text: booking['total'] as String? ?? '');
+    TextEditingController advanceController = TextEditingController(text: booking['advance'] as String? ?? '');
+
+    totalController.addListener(() {
+      calBalance(totalController, advanceController);
+    });
+
+    advanceController.addListener(() {
+      calBalance(totalController, advanceController);
+    });
+
+    calBalance(totalController, advanceController);
 
     return Scaffold(
       appBar: AppBar(
@@ -67,6 +89,33 @@ class EditBookingScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
+            _buildStyledTextField(
+              'total cost',
+              totalController,
+              icon: Icons.monetization_on,
+              maxLines: 1,
+            ),
+
+            const SizedBox(height: 30),
+
+            _buildStyledTextField(
+              'Advance',
+              advanceController,
+              icon: Icons.attach_money_rounded,
+              maxLines: 1,
+            ),
+            const SizedBox(height: 30),
+
+            Text(
+              " Balance : $balance",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.indigo,
+              ),
+            ),
+            SizedBox(height: 8),
+            const SizedBox(height: 30),
             Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center, // Center the buttons
@@ -76,7 +125,7 @@ class EditBookingScreen extends StatelessWidget {
                       // Perform basic validation
                       if (roomNumberController.text.isEmpty ||
                           roomTypeController.text.isEmpty ||
-                          packageTypeController.text.isEmpty) {
+                          packageTypeController.text.isEmpty ) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Please fill in all required fields')),
                         );
@@ -91,6 +140,8 @@ class EditBookingScreen extends StatelessWidget {
                         'extraDetails': extraDetailsController.text,
                         'checkIn': booking['checkIn'],
                         'checkOut': booking['checkOut'],
+                        'total' :  totalController.text,
+                        'advance' :  advanceController.text,
                       };
 
                       try {

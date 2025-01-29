@@ -14,7 +14,13 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   DateTime? _checkOutDate;
   String? _roomType;
   String? _packageType;
+  String? _totalCost;
+  String? _advance;
+
   final TextEditingController _extraDetailsController = TextEditingController();
+  final TextEditingController _totalCostController = TextEditingController();
+  final TextEditingController _advanceAmountController = TextEditingController();
+
   Set<int> _selectedRooms = {};
   Set<int> _bookedRooms = {};
   final ApiService _apiService = ApiService();
@@ -141,6 +147,9 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       return;
     }
 
+    _totalCost = _totalCostController.text;
+    _advance = _advanceAmountController.text;
+
     // Normalize check-in and check-out dates to avoid timezone issues
     DateTime normalizedCheckInDate = DateTime(_checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
     DateTime normalizedCheckOutDate = DateTime(_checkOutDate!.year, _checkOutDate!.month, _checkOutDate!.day);
@@ -250,6 +259,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         'checkIn': normalizedCheckInDate.toIso8601String(),
         'checkOut': normalizedCheckOutDate.toIso8601String(),
         'num_of_nights': _numOfNights,
+        'total' : _totalCost,
+        'advance' : _advance
       };
 
       try {
@@ -275,6 +286,10 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       _roomType = null;
       _packageType = null;
       _extraDetailsController.clear();
+      _advanceAmountController.clear();
+      _totalCostController.clear();
+      _totalCost = null;
+      _advance = null;
       _selectedRooms.clear();
       _bookedRooms.clear();
       _checkInDate = null;
@@ -401,6 +416,18 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
               _buildTextFieldContainer(
                 controller: _extraDetailsController,
                 labelText: 'Extra Details',
+              ),
+              const SizedBox(height: 20),
+              // Total cost
+              _buildTextFieldContainer2(
+                controller: _totalCostController,
+                labelText: 'Total cost',
+              ),
+              const SizedBox(height: 20),
+              // Total cost
+              _buildTextFieldContainer2(
+                controller: _advanceAmountController,
+                labelText: 'Advance Amount',
               ),
               const SizedBox(height: 20),
               Text(
@@ -659,6 +686,34 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           labelText: labelText,
         ),
         maxLines: 3,
+      ),
+    );
+  }
+
+  Widget _buildTextFieldContainer2({
+    required TextEditingController controller,
+    required String labelText,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          labelText: labelText,
+        ),
+        maxLines: 1,
       ),
     );
   }

@@ -99,6 +99,22 @@ class HomeScreen extends StatelessWidget {
                           ),
                           child: const Text('Inventory Management'),
                         ),
+                        const SizedBox(height: 20), // Space between buttons
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddInventoryItemScreen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.indigo,
+                          ),
+                          child: const Text('Profit Calculator'),
+                        ),
                       ],
                     ),
                   ),
