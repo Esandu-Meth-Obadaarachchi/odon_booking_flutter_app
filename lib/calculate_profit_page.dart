@@ -64,13 +64,17 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
       appBar: AppBar(
         title: Text("Calculate Profit",
             style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, color: Colors.white)),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.indigo,
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_today, color: Colors.white),
             onPressed: () => _selectMonth(context),
           ),
+
         ],
+        iconTheme: IconThemeData(
+          color: Colors.white,
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -81,7 +85,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.deepPurpleAccent,
+                color: Colors.indigoAccent,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -98,7 +102,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text("Change", style: TextStyle(color: Colors.deepPurpleAccent)),
+                    child: const Text("Change", style: TextStyle(color: Colors.indigo)),
                   ),
                 ],
               ),
@@ -184,7 +188,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.deepPurpleAccent,
+                color: Colors.indigo,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.hotel, color: Colors.white, size: 30),
