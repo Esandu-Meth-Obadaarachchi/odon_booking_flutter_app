@@ -331,6 +331,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   ),
                 ),
                 SizedBox(height: 8),
+
                 Text(
                   '2 - Double\n3 - Triple\n(Note: Rooms 2, 3, and 5 do not have hot water working. Room 4 is the Manager\'s room.)',
                   style: TextStyle(
@@ -338,8 +339,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                     color: Colors.grey[700],
                   ),
                 ),
-                SizedBox(height: 16),
 
+                SizedBox(height: 16),
 
                 Text(
                   'Room Details for FIRST FLOOR:',
