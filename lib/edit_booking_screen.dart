@@ -5,6 +5,7 @@ class EditBookingScreen extends StatelessWidget {
   final Map<String, dynamic> booking;
   final DateTime selectedDay;
   final ApiService _apiService = ApiService();
+  late ValueNotifier<String?> balanceMethodNotifier = ValueNotifier<String?>(null);
   String  balance = "N/A";
   EditBookingScreen({required this.booking, required this.selectedDay});
 
@@ -27,7 +28,11 @@ class EditBookingScreen extends StatelessWidget {
     TextEditingController extraDetailsController = TextEditingController(text: booking['extraDetails'] as String? ?? '');
     TextEditingController totalController = TextEditingController(text: booking['total'] as String? ?? '');
     TextEditingController advanceController = TextEditingController(text: booking['advance'] as String? ?? '');
-
+    balanceMethodNotifier = ValueNotifier<String?>(
+      (booking['balanceMethod'] == "Bank" || booking['balanceMethod'] == "Cash")
+          ? booking['balanceMethod'] as String?
+          : null, // Default to null if missing
+    );
     totalController.addListener(() {
       calBalance(totalController, advanceController);
     });
@@ -42,11 +47,15 @@ class EditBookingScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           "Edit Booking",
-          style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold,color: Colors.white),
         ),
         backgroundColor: Colors.indigo,
         centerTitle: true,
+        iconTheme: IconThemeData(
+          color: Colors.white,
+        ),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 25.0),
         child: Column(
@@ -114,7 +123,43 @@ class EditBookingScreen extends StatelessWidget {
                 color: Colors.indigo,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 30),
+
+
+            const Text("Select Balance Method:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo)),
+
+            const SizedBox(height: 10),
+
+            ValueListenableBuilder<String?>(
+              valueListenable: balanceMethodNotifier,
+              builder: (context, selectedMethod, child) {
+                return Row(
+                  children: [
+                    Checkbox(
+                      value: selectedMethod == "Bank",
+                      onChanged: (bool? value) {
+                        balanceMethodNotifier.value = value == true ? "Bank" : null;
+                      },
+                      activeColor: Colors.indigo,
+                    ),
+                    const Text("Bank", style: TextStyle(fontSize: 16)),
+
+                    const SizedBox(width: 20),
+
+                    Checkbox(
+                      value: selectedMethod == "Cash",
+                      onChanged: (bool? value) {
+                        balanceMethodNotifier.value = value == true ? "Cash" : null;
+                      },
+                      activeColor: Colors.indigo,
+                    ),
+                    const Text("Cash", style: TextStyle(fontSize: 16)),
+                  ],
+                );
+              },
+            ),
+
+            const SizedBox(height: 30),
             const SizedBox(height: 30),
             Center(
               child: Row(
@@ -142,6 +187,7 @@ class EditBookingScreen extends StatelessWidget {
                         'checkOut': booking['checkOut'],
                         'total' :  totalController.text,
                         'advance' :  advanceController.text,
+                        'balanceMethod' : balanceMethodNotifier.value
                       };
 
                       try {

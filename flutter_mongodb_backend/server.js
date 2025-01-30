@@ -19,7 +19,6 @@ mongoose.connect(dbURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
-
 // Updated Booking Schema
 const bookingSchema = new mongoose.Schema({
   roomNumber: String,
@@ -30,7 +29,8 @@ const bookingSchema = new mongoose.Schema({
   checkOut: Date,
   num_of_nights: Number, // New field to store the number of nights
   total : String,
-  advance : String
+  advance : String,
+  balanceMethod :String
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -56,7 +56,8 @@ app.post('/bookings', async (req, res) => {
     checkOut: req.body.checkOut, // Save check-out date
     num_of_nights: req.body.num_of_nights, // Save number of nights
     total : req.body.total,
-    advance : req.body.advance
+    advance : req.body.advance,
+    balanceMethod: req.body.balanceMethod
   });
 
   try {
@@ -88,8 +89,8 @@ app.put('/bookings/:id', async (req, res) => {
       checkOut: req.body.checkOut,
       ...(num_of_nights !== undefined && { num_of_nights }), // Add num_of_nights if calculated
       total : req.body.total,
-      advance : req.body.advance
-
+      advance : req.body.advance,
+      balanceMethod : req.body.balanceMethod
     };
 
     // Update booking
