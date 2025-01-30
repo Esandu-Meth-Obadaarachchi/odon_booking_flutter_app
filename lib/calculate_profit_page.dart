@@ -17,6 +17,9 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
   double totalAdvance = 0.0;
   double totalBalance = 0.0;
 
+  double totalBankBalance = 0.0;
+  double totalCashBalance = 0.0;
+
   Future<void> _fetchBookingsForMonth(DateTime month) async {
     try {
       final bookings = await _apiService.fetchBookingsForMonth(month);
@@ -26,14 +29,29 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
           return checkInDate.year == month.year && checkInDate.month == month.month;
         }).toList();
 
-        // Calculate totals
-        totalRevenue = _bookingsForSelectedMonth.fold(0.0, (sum, booking) =>
-        sum + (double.tryParse(booking['total'].toString()) ?? 0.0));
+        // Reset totals
+        totalRevenue = 0.0;
+        totalAdvance = 0.0;
+        totalBalance = 0.0;
+        totalBankBalance = 0.0;
+        totalCashBalance = 0.0;
 
-        totalAdvance = _bookingsForSelectedMonth.fold(0.0, (sum, booking) =>
-        sum + (double.tryParse(booking['advance'].toString()) ?? 0.0));
+        for (var booking in _bookingsForSelectedMonth) {
+          double total = double.tryParse(booking['total'].toString()) ?? 0.0;
+          double advance = double.tryParse(booking['advance'].toString()) ?? 0.0;
+          String? balanceMethod = booking['balanceMethod'];
 
-        totalBalance = totalRevenue - totalAdvance;
+          totalRevenue += total;
+          totalAdvance += advance;
+          totalBalance += (total - advance);
+
+          // Separate bank and cash balance
+          if (balanceMethod == "Bank") {
+            totalBankBalance += (total - advance);
+          } else if (balanceMethod == "Cash") {
+            totalCashBalance += (total - advance);
+          }
+        }
       });
     } catch (e) {
       print('Failed to fetch bookings: $e');
@@ -118,6 +136,19 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
                 _buildSummaryCard("Balance", totalBalance, Colors.orange),
               ],
             ),
+            const SizedBox(height: 20),
+
+// Conditionally Show Bank & Cash Balance
+            if (totalBankBalance > 0 || totalCashBalance > 0) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (totalBankBalance > 0) _buildSummaryCard("Bank Balance", totalBankBalance, Colors.purple),
+                  if (totalCashBalance > 0) _buildSummaryCard("Cash Balance", totalCashBalance, Colors.teal),
+                ],
+              ),
+
+            ],
             const SizedBox(height: 20),
 
             // Bookings List
