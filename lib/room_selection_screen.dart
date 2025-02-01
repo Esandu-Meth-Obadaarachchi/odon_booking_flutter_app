@@ -14,8 +14,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   DateTime? _checkOutDate;
   String? _roomType;
   String? _packageType;
-  String? _totalCost;
-  String? _advance;
 
   final TextEditingController _extraDetailsController = TextEditingController();
   final TextEditingController _totalCostController = TextEditingController();
@@ -147,8 +145,17 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       return;
     }
 
-    _totalCost = _totalCostController.text;
-    _advance = _advanceAmountController.text;
+    // Convert to double before division
+    double totalCostValue = double.tryParse(_totalCostController.text) ?? 0.0;
+    double advanceValue = double.tryParse(_advanceAmountController.text) ?? 0.0;
+    int numRooms = _selectedRooms.length;
+
+    // Avoid division by zero
+    double costPerRoom = numRooms > 0 ? totalCostValue / numRooms : 0.0;
+    double advancePerRoom = numRooms > 0 ? advanceValue / numRooms : 0.0;
+
+
+
 
     // Normalize check-in and check-out dates to avoid timezone issues
     DateTime normalizedCheckInDate = DateTime(_checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
@@ -250,6 +257,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     }
 
     // Proceed with booking
+    // Proceed with booking
     for (int roomNumber in _selectedRooms) {
       final newBooking = {
         'roomNumber': roomNumber.toString(),
@@ -259,8 +267,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         'checkIn': normalizedCheckInDate.toIso8601String(),
         'checkOut': normalizedCheckOutDate.toIso8601String(),
         'num_of_nights': _numOfNights,
-        'total' : _totalCost,
-        'advance' : _advance
+        'total': costPerRoom.toStringAsFixed(2),  // Convert back to String
+        'advance': advancePerRoom.toStringAsFixed(2), // Convert back to String
       };
 
       try {
@@ -288,8 +296,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       _extraDetailsController.clear();
       _advanceAmountController.clear();
       _totalCostController.clear();
-      _totalCost = null;
-      _advance = null;
+
       _selectedRooms.clear();
       _bookedRooms.clear();
       _checkInDate = null;

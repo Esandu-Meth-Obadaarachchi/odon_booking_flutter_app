@@ -125,18 +125,18 @@ app.delete('/bookings/:id', async (req, res) => {
   }
 });
 
-//app.listen(port, "0.0.0.0",() => {
-//  console.log(`Server running on port http://15.207.116.36:3000`);
-//});
+app.listen(port, "0.0.0.0",() => {
+  console.log(`Server running on port http://15.207.116.36:3000`);
+});
 
 app.get('/', (req, res) => {
     res.send('🟢 Server is running!');
 });
 
-////Run server on localhost
-app.listen(port, '192.168.1.26', () => {
-  console.log(`Server running on http://192.168.1.26:${port}`);
-});
+//////Run server on localhost
+//app.listen(port, '192.168.1.26', () => {
+//  console.log(`Server running on http://192.168.1.26:${port}`);
+//});
 
 
 // Inventory Schema
@@ -221,7 +221,20 @@ app.put('/inventory/:id', async (req, res) => {
   }
 });
 
+app.delete('/inventory/:id', async (req, res) => {
+  try {
+    const inventory = await Inventory.findById(req.params.id);
+    if (!Inventory) {
+      return res.status(404).json({ message: 'inventory not found' });
+    }
 
+    // Use deleteOne for the document
+    await Inventory.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Inventory deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 
 

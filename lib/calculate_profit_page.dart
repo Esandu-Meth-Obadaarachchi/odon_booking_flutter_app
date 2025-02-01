@@ -138,7 +138,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
             ),
             const SizedBox(height: 20),
 
-// Conditionally Show Bank & Cash Balance
+            // Conditionally Show Bank & Cash Balance
             if (totalBankBalance > 0 || totalCashBalance > 0) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
