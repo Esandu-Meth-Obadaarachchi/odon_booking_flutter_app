@@ -154,9 +154,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     double costPerRoom = numRooms > 0 ? totalCostValue / numRooms : 0.0;
     double advancePerRoom = numRooms > 0 ? advanceValue / numRooms : 0.0;
 
-
-
-
     // Normalize check-in and check-out dates to avoid timezone issues
     DateTime normalizedCheckInDate = DateTime(_checkInDate!.year, _checkInDate!.month, _checkInDate!.day);
     DateTime normalizedCheckOutDate = DateTime(_checkOutDate!.year, _checkOutDate!.month, _checkOutDate!.day);
@@ -178,86 +175,68 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       'conditioner': 0,
       'body lotion': 0,
       'shampoo': 0,
+      'brush kit': 0,
     };
 
     switch (_roomType) {
       case 'Triple':
+      case 'Family':
+      case 'Double':
+      case 'Family Plus':
         itemsToSubtract = {
           'soap': 1,
           'conditioner': 1,
           'body lotion': 1,
           'shampoo': 1,
-        };
-        break;
-      case 'Family':
-        itemsToSubtract = {
-          'soap': 2,
-          'conditioner': 1,
-          'body lotion': 1,
-          'shampoo': 2,
-        };
-        break;
-      case 'Double':
-        itemsToSubtract = {
-          'soap': 10,
-          'conditioner': 10,
-          'body lotion': 10,
-          'shampoo': 20,
-        };
-        break;
-      case 'Family Plus':
-        itemsToSubtract = {
-          'soap': 2,
-          'conditioner': 2,
-          'body lotion': 2,
-          'shampoo': 2,
+          'brush kit': 1,
         };
         break;
     }
 
-    // Check if there’s enough inventory
+    bool hasInventoryIssue = false;
+
+    // Check if there’s enough inventory but still proceed
     for (var key in itemsToSubtract.keys) {
       final inventoryItem = inventoryItems.firstWhere(
             (item) => item['item_name'].toLowerCase() == key,
         orElse: () => null,
       );
-      print(inventoryItem);
+
       if (inventoryItem == null || (inventoryItem['quantity'] ?? 0) < itemsToSubtract[key]!) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Not enough $key in inventory for this booking')),
-        );
-        return;
+        hasInventoryIssue = true;
+
       }
     }
 
-    // Deduct the inventory
+    // Deduct the inventory but only for items that exist in the inventory
     for (var key in itemsToSubtract.keys) {
       final inventoryItem = inventoryItems.firstWhere(
             (item) => item['item_name'].toLowerCase() == key,
+        orElse: () => null,
       );
 
-      final updatedQuantity = (inventoryItem['quantity'] ?? 0) - itemsToSubtract[key]!;
-
-      // Update inventory in the database
-      try {
-        print(updatedQuantity);
-        await _apiService.updateInventoryItem(
-          inventoryItem['_id'], // Use '_id' to identify the item
-          {
-            'item_name': inventoryItem['item_name'],
-            'quantity': updatedQuantity,
-          },
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update inventory for $key')),
-        );
-        return;
+      if (inventoryItem != null) {
+        final updatedQuantity = (inventoryItem['quantity'] ?? 0) - itemsToSubtract[key]!;
+        if (updatedQuantity >= 0) {
+          // Update inventory in the database
+          try {
+            await _apiService.updateInventoryItem(
+              inventoryItem['_id'], // Use '_id' to identify the item
+              {
+                'item_name': inventoryItem['item_name'],
+                'quantity': updatedQuantity,
+              },
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to update inventory for $key')),
+            );
+          }
+        }
       }
     }
 
-    // Proceed with booking
-    // Proceed with booking
+    // Proceed with booking even if inventory is low
     for (int roomNumber in _selectedRooms) {
       final newBooking = {
         'roomNumber': roomNumber.toString(),
@@ -267,7 +246,7 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         'checkIn': normalizedCheckInDate.toIso8601String(),
         'checkOut': normalizedCheckOutDate.toIso8601String(),
         'num_of_nights': _numOfNights,
-        'total': costPerRoom.toStringAsFixed(2),  // Convert back to String
+        'total': costPerRoom.toStringAsFixed(2), // Convert back to String
         'advance': advancePerRoom.toStringAsFixed(2), // Convert back to String
       };
 
@@ -281,8 +260,13 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       }
     }
 
+    // Show final success message
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Booking(s) and inventory updated successfully')),
+      SnackBar(
+        content: Text(hasInventoryIssue
+            ? 'Booking(s) saved successfully, but check inventory levels!'
+            : 'Booking(s) and inventory updated successfully'),
+      ),
     );
 
     _resetBooking();

@@ -105,6 +105,11 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
+                    const Text(
+                      'These are the item names you should use soap, conditioner, body lotion, shampoo, brush kit.',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _itemNameController,
                       decoration: const InputDecoration(

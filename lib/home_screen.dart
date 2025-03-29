@@ -4,7 +4,8 @@ import 'view_bookings_screen.dart';
 import 'login_screen.dart';
 import ' add_inventory_item_screen.dart';
 import 'calculate_profit_page.dart';
-
+import 'invoice.dart';
+import 'generate_invoice_screen.dart';
 class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -115,6 +116,22 @@ class HomeScreen extends StatelessWidget {
                             backgroundColor: Colors.indigo,
                           ),
                           child: const Text('Profit Calculator'),
+                        ),
+                        const SizedBox(height: 20), // Space between buttons
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => GenerateInvoiceScreen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.indigo,
+                          ),
+                          child: const Text('Generate Invoice'),
                         ),
                       ],
                     ),
