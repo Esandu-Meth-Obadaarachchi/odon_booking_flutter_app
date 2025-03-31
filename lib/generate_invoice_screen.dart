@@ -1,12 +1,23 @@
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'invoice.dart' as invoice;
 import 'invoice.dart';
-
+//show the normal special notes in the pdf
+//fix the drivers room issue
+// when displaying multiple rooms for multiple days with custom packages , that has to be fixed
 class Room {
   String type;
   int quantity;
 
   Room(this.type, this.quantity);
+}
+
+class ExtraCharge {
+  String reason;
+  double amount;
+
+  ExtraCharge({required this.reason, required this.amount});
 }
 
 class GenerateInvoiceScreen extends StatefulWidget {
@@ -19,10 +30,21 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _checkInController = TextEditingController();
   final TextEditingController _checkOutController = TextEditingController();
+  final TextEditingController _additionalDiscountController = TextEditingController();
+  final TextEditingController _specialNotesController = TextEditingController();
   final TextEditingController _extraChargesController = TextEditingController();
   final TextEditingController _extraChargesReasonController = TextEditingController();
-  final TextEditingController _advanceAmountController = TextEditingController();
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _checkInController.dispose();
+    _checkOutController.dispose();
+    _extraChargesController.dispose();
+    _extraChargesReasonController.dispose();
+    _advanceAmountController.dispose();
+    super.dispose();
+  }
   DateTime? _checkInDate;
   DateTime? _checkOutDate;
 
@@ -31,7 +53,13 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   List<String> _dayPackages = [];
   double _totalAmount = 0.0;
   double _discount = 0.0;
+  double _additionalDiscount = 0.0;
   double _discountPerRoom = 1000.0; // Preset discount amount per room per night
+  bool _includeDriverRoom = false;
+  static const double DRIVER_ROOM_PRICE = 2500.0;
+
+  // Extra charges
+  List<ExtraCharge> _extraCharges = [];
 
   // Multiple rooms selection
   List<Room> _selectedRooms = [];
@@ -97,11 +125,27 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     return total;
   }
 
+  // Driver room total calculation
+  double get _driverRoomTotal {
+    if (!_includeDriverRoom || _checkInDate == null || _checkOutDate == null) return 0.0;
+    int nights = _checkOutDate!.difference(_checkInDate!).inDays;
+    return DRIVER_ROOM_PRICE * nights;
+  }
+
+  // Sum of all extra charges
+  double get _totalExtraCharges {
+    return _extraCharges.fold(0.0, (sum, charge) => sum + charge.amount);
+  }
+
+  final TextEditingController _advanceAmountController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     // Initialize with one empty room
     _selectedRooms.add(Room('Double', 1));
+    // Initialize with one empty extra charge field
+    _extraCharges.add(ExtraCharge(reason: '', amount: 0.0));
   }
 
   void _updateDayPackages() {
@@ -135,20 +179,23 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       }
     }
 
-    subtotal = roomTotal;
+    // Add driver room cost if selected
+    double driverRoomCost = _driverRoomTotal;
 
-    // Calculate discount (Rs 1000 per room per night)
+    // Calculate main subtotal (rooms + driver room)
+    subtotal = roomTotal + driverRoomCost;
+
+    // Calculate preset discount (Rs 1000 per room per night)
     _discount = _discountPerRoom * _totalRoomNights;
 
-    // Add extra charges if any
-    double extraCharges = 0.0;
-    if (_extraChargesController.text.isNotEmpty) {
-      extraCharges = double.tryParse(_extraChargesController.text) ?? 0.0;
-      subtotal += extraCharges;
-    }
+    // Add additional discount if any
+    _additionalDiscount = double.tryParse(_additionalDiscountController.text) ?? 0.0;
+
+    // Add extra charges
+    double extraChargesTotal = _totalExtraCharges;
 
     setState(() {
-      _totalAmount = subtotal - _discount;
+      _totalAmount = subtotal - _discount - _additionalDiscount + extraChargesTotal;
     });
   }
 
@@ -190,12 +237,46 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     });
   }
 
+  void _addExtraCharge() {
+    setState(() {
+      _extraCharges.add(ExtraCharge(reason: '', amount: 0.0));
+    });
+  }
+
+  void _removeExtraCharge(int index) {
+    if (_extraCharges.length > 1) {
+      setState(() {
+        _extraCharges.removeAt(index);
+        _calculateTotal();
+      });
+    } else {
+      // Just clear the values if it's the last one
+      setState(() {
+        _extraCharges[0] = ExtraCharge(reason: '', amount: 0.0);
+        _calculateTotal();
+      });
+    }
+  }
+
+  void _updateExtraChargeReason(int index, String reason) {
+    setState(() {
+      _extraCharges[index].reason = reason;
+    });
+  }
+
+  void _updateExtraChargeAmount(int index, String amountStr) {
+    setState(() {
+      _extraCharges[index].amount = double.tryParse(amountStr) ?? 0.0;
+      _calculateTotal();
+    });
+  }
+
   Future<void> _selectDate(BuildContext context, bool isCheckIn) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: isCheckIn ? (DateTime.now()) : (_checkInDate ?? DateTime.now().add(Duration(days: 1))),
-      firstDate: isCheckIn ? DateTime.now() : (_checkInDate ?? DateTime.now()),
-      lastDate: DateTime.now().add(Duration(days: 365)),
+      firstDate: DateTime(2000), // Allows selection from the year 2000 onwards
+      lastDate: DateTime(2100),
     );
 
     if (picked != null) {
@@ -384,6 +465,20 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                   ),
                 ),
 
+                // Driver Room Option
+                CheckboxListTile(
+                  title: Text('Include Driver Room (LKR ${DRIVER_ROOM_PRICE.toStringAsFixed(2)}/night)'),
+                  value: _includeDriverRoom,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      _includeDriverRoom = value ?? false;
+                      _calculateTotal();
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.indigo,
+                ),
+
                 SizedBox(height: 16),
 
                 // Package Selection
@@ -425,6 +520,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                     });
                   },
                   controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.indigo,
                 ),
 
                 // Day-by-day package selection (only shown if customize is checked)
@@ -433,35 +529,87 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
                 SizedBox(height: 16),
 
-                // Extra Charges with Reason
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextFormField(
-                        controller: _extraChargesReasonController,
-                        decoration: InputDecoration(
-                          labelText: 'Extra Charges Reason',
-                          border: OutlineInputBorder(),
-                          hintText: 'e.g., Airport Transfer, Late Checkout',
+                // Extra Charges Section
+                Text(
+                  'Extra Charges:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+
+                // Multiple Extra Charges
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: _extraCharges.length,
+                  itemBuilder: (context, index) {
+                    return Card(
+                      margin: EdgeInsets.only(bottom: 8),
+                      child: Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                initialValue: _extraCharges[index].reason,
+                                decoration: InputDecoration(
+                                  labelText: 'Reason',
+                                  border: OutlineInputBorder(),
+                                  hintText: 'e.g., Airport Transfer',
+                                ),
+                                onChanged: (value) => _updateExtraChargeReason(index, value),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              flex: 1,
+                              child: TextFormField(
+                                initialValue: _extraCharges[index].amount > 0
+                                    ? _extraCharges[index].amount.toString()
+                                    : '',
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Amount (LKR)',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) => _updateExtraChargeAmount(index, value),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _removeExtraCharge(index),
+                            ),
+                          ],
                         ),
                       ),
+                    );
+                  },
+                ),
+
+                // Add Extra Charge Button
+                Center(
+                  child: TextButton.icon(
+                    icon: Icon(Icons.add),
+                    label: Text('Add Extra Charge'),
+                    onPressed: _addExtraCharge,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.indigo,
                     ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      flex: 1,
-                      child: TextFormField(
-                        controller: _extraChargesController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Amount (LKR)',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (_) => _calculateTotal(),
-                      ),
-                    ),
-                  ],
+                  ),
+                ),
+
+                SizedBox(height: 16),
+
+                // Additional Discount
+                TextFormField(
+                  controller: _additionalDiscountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Additional Discount (LKR)',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => _calculateTotal(),
                 ),
 
                 SizedBox(height: 16),
@@ -475,6 +623,19 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (_) => setState(() {}), // Just to refresh UI when value changes
+                ),
+
+                SizedBox(height: 16),
+
+                // Special Notes
+                TextFormField(
+                  controller: _specialNotesController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Special Notes',
+                    border: OutlineInputBorder(),
+                    hintText: 'Any special requests or notes',
+                  ),
                 ),
 
                 SizedBox(height: 24),
@@ -503,18 +664,46 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                           child: Text('${room.quantity}x ${room.type} Room'),
                         )).toList(),
 
+                        if (_includeDriverRoom)
+                          Padding(
+                            padding: EdgeInsets.only(left: 16),
+                            child: Text('1x Driver Room'),
+                          ),
+
                         SizedBox(height: 8),
                         Text('Total Guests: $_totalGuests'),
                         Text('Package: ${_customizePackages ? "Custom Package" : _packageType}'),
-                        if (_extraChargesReasonController.text.isNotEmpty && double.tryParse(_extraChargesController.text) != null && double.tryParse(_extraChargesController.text)! > 0)
-                          Text('Extra: ${_extraChargesReasonController.text} - LKR ${NumberFormat('#,##0.00').format(double.parse(_extraChargesController.text))}'),
+
+                        // Extra charges
+                        if (_extraCharges.any((charge) => charge.reason.isNotEmpty && charge.amount > 0)) ...[
+                          SizedBox(height: 8),
+                          Text('Extra Charges:', style: TextStyle(fontWeight: FontWeight.w500)),
+                          ..._extraCharges
+                              .where((charge) => charge.reason.isNotEmpty && charge.amount > 0)
+                              .map((charge) => Padding(
+                            padding: EdgeInsets.only(left: 16),
+                            child: Text('${charge.reason}: LKR ${NumberFormat('#,##0.00').format(charge.amount)}'),
+                          )).toList(),
+                        ],
+
                         SizedBox(height: 8),
 
                         // Financial breakdown
-                        Text('Subtotal: LKR ${NumberFormat('#,##0.00').format(_totalAmount + _discount)}',
+                        Text('Subtotal: LKR ${NumberFormat('#,##0.00').format(_totalAmount + _discount + _additionalDiscount - _totalExtraCharges)}',
                             style: TextStyle(fontWeight: FontWeight.w500)),
-                        Text('Discount: LKR ${NumberFormat('#,##0.00').format(_discount)}',
-                            style: TextStyle(color: Colors.red)),
+
+                        if (_discount > 0)
+                          Text('Standard Discount: LKR ${NumberFormat('#,##0.00').format(_discount)}',
+                              style: TextStyle(color: Colors.red)),
+
+                        if (_additionalDiscount > 0)
+                          Text('Additional Discount: LKR ${NumberFormat('#,##0.00').format(_additionalDiscount)}',
+                              style: TextStyle(color: Colors.red)),
+
+                        if (_totalExtraCharges > 0)
+                          Text('Extra Charges: LKR ${NumberFormat('#,##0.00').format(_totalExtraCharges)}',
+                              style: TextStyle(color: Colors.blue)),
+
                         Divider(),
                         Text('Total Amount: LKR ${NumberFormat('#,##0.00').format(_totalAmount)}',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo)),
@@ -524,6 +713,15 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                               style: TextStyle(color: Colors.green)),
                           Text('Balance: LKR ${NumberFormat('#,##0.00').format(_remainingBalance)}',
                               style: TextStyle(fontWeight: FontWeight.w500)),
+                        ],
+
+                        if (_specialNotesController.text.isNotEmpty) ...[
+                          SizedBox(height: 8),
+                          Text('Special Notes:', style: TextStyle(fontWeight: FontWeight.w500)),
+                          Padding(
+                            padding: EdgeInsets.only(left: 16),
+                            child: Text(_specialNotesController.text),
+                          ),
                         ]
                       ]
                     ],
@@ -631,6 +829,10 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     String roomDetails = _selectedRooms.map((room) =>
     "${room.quantity}x ${room.type}").join(", ");
 
+    if (_includeDriverRoom) {
+      roomDetails += ", 1x Driver Room";
+    }
+
     // Calculate price breakdown by room type and package
     Map<String, Map<String, dynamic>> priceBreakdown = {};
 
@@ -638,17 +840,21 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       int nights = _checkOutDate!.difference(_checkInDate!).inDays;
 
       for (var room in _selectedRooms) {
-        String key = "${room.type} - ${_customizePackages ? "Custom" : _packageType}";
+        String key = "${room.type} - ${_customizePackages
+            ? "Custom"
+            : _packageType}";
         double roomPrice = 0;
 
         if (_customizePackages) {
           // This is a simplified calculation for custom packages
           roomPrice = 0;
           for (int i = 0; i < nights && i < _dayPackages.length; i++) {
-            roomPrice += _roomPrices[_dayPackages[i]]![room.type]! * room.quantity;
+            roomPrice +=
+                _roomPrices[_dayPackages[i]]![room.type]! * room.quantity;
           }
         } else {
-          roomPrice = _roomPrices[_packageType]![room.type]! * room.quantity * nights;
+          roomPrice =
+              _roomPrices[_packageType]![room.type]! * room.quantity * nights;
         }
 
         priceBreakdown[key] = {
@@ -658,17 +864,26 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
           'totalPrice': roomPrice
         };
       }
+
+      // Add driver room if selected
+      if (_includeDriverRoom) {
+        priceBreakdown["Driver Room"] = {
+          'quantity': 1,
+          'nights': nights,
+          // Fix for the incomplete part in _generateInvoice() method
+          'totalPrice': DRIVER_ROOM_PRICE * nights
+        };
+      }
     }
 
-    // Add extra charges if applicable
-    if (_extraChargesController.text.isNotEmpty && _extraChargesReasonController.text.isNotEmpty) {
-      double extraAmount = double.tryParse(_extraChargesController.text) ?? 0.0;
-      if (extraAmount > 0) {
-        priceBreakdown[_extraChargesReasonController.text] = {
+    // Handle multiple extra charges
+    for (var charge in _extraCharges) {
+      if (charge.reason.isNotEmpty && charge.amount > 0) {
+        priceBreakdown[charge.reason] = {
           'quantity': 1,
-          'nights': 1,
-          'unitPrice': extraAmount,
-          'totalPrice': extraAmount
+          'nights': 1, // One-time charge, not per night
+          'unitPrice': charge.amount,
+          'totalPrice': charge.amount
         };
       }
     }
@@ -680,15 +895,21 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       numGuests: _totalGuests,
       room: roomDetails,
       packageDetails: packageDetails,
-      totalAmount: NumberFormat('#,##0.00').format(_totalAmount + _discount),
-      discount: NumberFormat('#,##0.00').format(_discount),
+      totalAmount: NumberFormat('#,##0.00').format(
+          _totalAmount + _discount + _additionalDiscount - _totalExtraCharges),
+      standardDiscount: NumberFormat('#,##0.00').format(_discount),
+      additionalDiscount: NumberFormat('#,##0.00').format(_additionalDiscount),
+      extraCharges: _extraCharges
+          .where((charge) => charge.reason.isNotEmpty && charge.amount > 0)
+          .map((charge) => invoice.ExtraCharge(reason: charge.reason, amount: charge.amount))
+          .toList(),
       finalAmount: NumberFormat('#,##0.00').format(_totalAmount),
       advanceAmount: NumberFormat('#,##0.00').format(_advanceAmount),
       balanceAmount: NumberFormat('#,##0.00').format(_remainingBalance),
       priceBreakdown: priceBreakdown,
-      extraChargesReason: _extraChargesReasonController.text,
-      extraChargesAmount: _extraChargesController.text.isEmpty ? 0 : double.parse(_extraChargesController.text),
+      specialNotes: _specialNotesController.text,
     );
+
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -698,14 +919,5 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _checkInController.dispose();
-    _checkOutController.dispose();
-    _extraChargesController.dispose();
-    _extraChargesReasonController.dispose();
-    _advanceAmountController.dispose();
-    super.dispose();
-  }
+
 }
