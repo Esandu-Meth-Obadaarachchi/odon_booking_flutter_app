@@ -870,25 +870,28 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
         priceBreakdown["Driver Room"] = {
           'quantity': 1,
           'nights': nights,
-          // Fix for the incomplete part in _generateInvoice() method
+          'unitPrice': DRIVER_ROOM_PRICE,
           'totalPrice': DRIVER_ROOM_PRICE * nights
         };
       }
     }
 
-    // Handle multiple extra charges
-    for (var charge in _extraCharges) {
-      if (charge.reason.isNotEmpty && charge.amount > 0) {
-        priceBreakdown[charge.reason] = {
-          'quantity': 1,
-          'nights': 1, // One-time charge, not per night
-          'unitPrice': charge.amount,
-          'totalPrice': charge.amount
-        };
-      }
-    }
+    // IMPORTANT: Removed the code that adds extra charges to priceBreakdown to avoid duplicates
+    // Extra charges are now only handled through the extraCharges parameter
 
-    await generateInvoice(
+    // Prepare standard fixed notes and combine with user's special notes
+    String fixedNotes = """• If you need a driver's room, please inform on the same day you make the reservation
+• If you need any extra meal please inform the previous day
+• Meals brought from outside will not be allowed to have inside the rooms or restaurant
+• Swimming Pool will be unavailable after 8.00pm""";
+
+    String combinedNotes = _specialNotesController.text;
+    if (combinedNotes.isNotEmpty) {
+      combinedNotes += "\n\n";
+    }
+    combinedNotes += "PLEASE NOTE THAT:\n" + fixedNotes;
+
+    await invoice.generateInvoice(
       guestName: _nameController.text,
       checkIn: _checkInController.text,
       checkOut: _checkOutController.text,
@@ -907,9 +910,8 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       advanceAmount: NumberFormat('#,##0.00').format(_advanceAmount),
       balanceAmount: NumberFormat('#,##0.00').format(_remainingBalance),
       priceBreakdown: priceBreakdown,
-      specialNotes: _specialNotesController.text,
+      specialNotes: combinedNotes,
     );
-
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

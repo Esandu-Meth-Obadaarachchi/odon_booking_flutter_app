@@ -65,7 +65,7 @@ Future<void> generateInvoice({
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      "Hotel The Odon",
+                      "The ODON",
                       style: pw.TextStyle(font: boldFont, fontSize: 24),
                     ),
                     pw.SizedBox(height: 4),
@@ -535,7 +535,7 @@ Future<void> generateInvoice({
                       ),
                       pw.SizedBox(height: 2),
                       pw.Text(
-                        "Cash / Bank Transfer / Credit Card",
+                        "Cash / Bank Transfer",
                         style: pw.TextStyle(font: defaultFont, fontSize: 9),
                       ),
                     ],

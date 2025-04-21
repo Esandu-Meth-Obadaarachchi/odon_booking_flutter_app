@@ -36,12 +36,12 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     if (picked != null && picked != _checkInDate) {
       setState(() {
         _checkInDate = picked;
+        // Automatically set check-out date to one day after check-in
+        _checkOutDate = picked.add(Duration(days: 1));
       });
 
-      if (_checkOutDate != null) {
-        _calculateNumOfNights();
-        _fetchBookingsForDateRange(); // Fetch bookings for the selected range
-      }
+      _calculateNumOfNights();
+      _fetchBookingsForDateRange(); // Fetch bookings for the selected range
     }
   }
 
@@ -459,8 +459,11 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                   itemBuilder: (context, index) {
                     int roomNumber = 1 + index;
 
+                    // Make room 4 always appear as booked (manager's room)
+                    bool isManagerRoom = roomNumber == 4;
+
                     // Check if the room is already booked for the selected date range
-                    bool isBooked = _bookedRooms.contains(roomNumber);
+                    bool isBooked = isManagerRoom || _bookedRooms.contains(roomNumber);
 
                     return ElevatedButton(
                       onPressed: isBooked
