@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'invoice.dart' as invoice;
 import 'invoice.dart';
-//show the normal special notes in the pdf
-//fix the drivers room issue
-// when displaying multiple rooms for multiple days with custom packages , that has to be fixed
 class Room {
   String type;
   int quantity;
@@ -876,11 +873,11 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       }
     }
 
-    // IMPORTANT: Removed the code that adds extra charges to priceBreakdown to avoid duplicates
-    // Extra charges are now only handled through the extraCharges parameter
+
 
     // Prepare standard fixed notes and combine with user's special notes
-    String fixedNotes = """• If you need a driver's room, please inform on the same day you make the reservation
+    String fixedNotes = """• Once you arrive to check in, please produce the NIC of the person under whose name the booking was made.
+• If you need a driver's room, please inform on the same day you make the reservation
 • If you need any extra meal please inform the previous day
 • Meals brought from outside will not be allowed to have inside the rooms or restaurant
 • Swimming Pool will be unavailable after 8.00pm""";
