@@ -44,7 +44,28 @@ app.get('/bookings', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// Salary Schema
+const salarySchema = new mongoose.Schema({
+  employeeName: { type: String, required: true },
+  salaryType: { type: String, required: true }, // OT, Monthly, Weekly, Commission
+  amount: { type: Number, required: true },
+  date: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
+});
 
+const Salary = mongoose.model('Salary', salarySchema);
+
+// Expense Schema
+const expenseSchema = new mongoose.Schema({
+  expenseName: { type: String, required: true },
+  category: { type: String, required: true }, // Food, Utilities, Maintenance, etc.
+  amount: { type: Number, required: true },
+  date: { type: Date, required: true },
+  reason: { type: String }, // Optional description
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Expense = mongoose.model('Expense', expenseSchema);
 // Routes
 app.post('/bookings', async (req, res) => {
   const booking = new Booking({
@@ -236,5 +257,161 @@ app.delete('/inventory/:id', async (req, res) => {
   }
 });
 
+
+// SALARY ROUTES
+
+// Get all salary records
+app.get('/salaries', async (req, res) => {
+  try {
+    const salaries = await Salary.find().sort({ createdAt: -1 });
+    res.json(salaries);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Add new salary record
+app.post('/salaries', async (req, res) => {
+  const { employeeName, salaryType, amount } = req.body;
+
+  if (!employeeName || !salaryType || !amount) {
+    return res.status(400).json({ message: 'Employee name, salary type, and amount are required' });
+  }
+
+  const salary = new Salary({
+    employeeName: req.body.employeeName,
+    salaryType: req.body.salaryType,
+    amount: req.body.amount,
+    date: req.body.date || Date.now()
+  });
+
+  try {
+    const newSalary = await salary.save();
+    res.status(201).json(newSalary);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Update salary record
+app.put('/salaries/:id', async (req, res) => {
+  console.log("Updating salary record");
+  try {
+    const updateData = {
+      employeeName: req.body.employeeName,
+      salaryType: req.body.salaryType,
+      amount: req.body.amount,
+      date: req.body.date
+    };
+
+    const updatedSalary = await Salary.findOneAndUpdate(
+      { _id: req.params.id },
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedSalary) {
+      return res.status(404).json({ message: 'Salary record not found' });
+    }
+
+    res.json(updatedSalary);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Delete salary record
+app.delete('/salaries/:id', async (req, res) => {
+  try {
+    const salary = await Salary.findById(req.params.id);
+    if (!salary) {
+      return res.status(404).json({ message: 'Salary record not found' });
+    }
+
+    await Salary.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Salary record deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// EXPENSE ROUTES
+
+// Get all expense records
+app.get('/expenses', async (req, res) => {
+  try {
+    const expenses = await Expense.find().sort({ createdAt: -1 });
+    res.json(expenses);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Add new expense record
+app.post('/expenses', async (req, res) => {
+  const { expenseName, category, amount, date } = req.body;
+
+  if (!expenseName || !category || !amount || !date) {
+    return res.status(400).json({ message: 'Expense name, category, amount, and date are required' });
+  }
+
+  const expense = new Expense({
+    expenseName: req.body.expenseName,
+    category: req.body.category,
+    amount: req.body.amount,
+    date: req.body.date,
+    reason: req.body.reason || ''
+  });
+
+  try {
+    const newExpense = await expense.save();
+    res.status(201).json(newExpense);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Update expense record
+app.put('/expenses/:id', async (req, res) => {
+  console.log("Updating expense record");
+  try {
+    const updateData = {
+      expenseName: req.body.expenseName,
+      category: req.body.category,
+      amount: req.body.amount,
+      date: req.body.date,
+      reason: req.body.reason
+    };
+
+    const updatedExpense = await Expense.findOneAndUpdate(
+      { _id: req.params.id },
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedExpense) {
+      return res.status(404).json({ message: 'Expense record not found' });
+    }
+
+    res.json(updatedExpense);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Delete expense record
+app.delete('/expenses/:id', async (req, res) => {
+  try {
+    const expense = await Expense.findById(req.params.id);
+    if (!expense) {
+      return res.status(404).json({ message: 'Expense record not found' });
+    }
+
+    await Expense.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Expense record deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 

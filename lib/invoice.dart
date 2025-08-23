@@ -70,7 +70,7 @@ Future<void> generateInvoice({
                     ),
                     pw.SizedBox(height: 4),
                     pw.Text(
-                      "No.10, Ankara 25, Lollugaswewa, Watawandana Rd, Anuradhapura",
+                      "No.10, Akkara 25, Lollugaswewa, Watawandana Rd, Anuradhapura",
                       style: pw.TextStyle(font: defaultFont, fontSize: 10),
                     ),
                     pw.Text(
@@ -357,7 +357,7 @@ Future<void> generateInvoice({
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text(
-                            "Standard Discount:",
+                            "Discount:",
                             style: pw.TextStyle(font: defaultFont, fontSize: 12),
                           ),
                           pw.Text(

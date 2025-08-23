@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
 
-  final String baseUrl = 'http://15.207.116.36:3000';
-  // final String baseUrl = 'http://192.168.1.26:3000';
+  //final String baseUrl = 'http://15.207.116.36:3000';
+  final String baseUrl = 'http://192.168.1.26:3000';
 
   Future<List<Map<String, dynamic>>> fetchFutureBookings(DateTime fromDate) async {
     //final String baseUrl = await _getBaseUrl();
@@ -151,6 +151,98 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to update inventory item: ${response.reasonPhrase}');
+    }
+  }
+
+  // SALARY METHODS
+  Future<List<Map<String, dynamic>>> fetchSalaries() async {
+    final response = await http.get(Uri.parse('$baseUrl/salaries'));
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch salaries: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> addSalary(Map<String, dynamic> salaryData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/salaries'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(salaryData),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to add salary: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> updateSalary(String id, Map<String, dynamic> salaryData) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/salaries/$id'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(salaryData),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update salary: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> deleteSalary(String id) async {
+    final response = await http.delete(Uri.parse('$baseUrl/salaries/$id'));
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete salary: ${response.reasonPhrase}');
+    }
+  }
+
+  // EXPENSE METHODS
+  Future<List<Map<String, dynamic>>> fetchExpenses() async {
+    final response = await http.get(Uri.parse('$baseUrl/expenses'));
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch expenses: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> addExpense(Map<String, dynamic> expenseData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/expenses'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(expenseData),
+    );
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to add expense: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> updateExpense(String id, Map<String, dynamic> expenseData) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/expenses/$id'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(expenseData),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update expense: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> deleteExpense(String id) async {
+    final response = await http.delete(Uri.parse('$baseUrl/expenses/$id'));
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete expense: ${response.reasonPhrase}');
     }
   }
 

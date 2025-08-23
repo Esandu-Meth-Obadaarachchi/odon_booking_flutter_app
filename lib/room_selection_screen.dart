@@ -170,32 +170,65 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     }
 
     // Define items to subtract based on room type
-    Map<String, int> itemsToSubtract = {
-      'soap': 0,
-      'conditioner': 0,
-      'body lotion': 0,
-      'shampoo': 0,
-      'brush kit': 0,
-    };
+    Map<String, int> itemsToSubtract = {};
 
     switch (_roomType) {
-      case 'Triple':
-      case 'Family':
       case 'Double':
+        itemsToSubtract = {
+          'soap': 1,
+          'conditioner': 1,
+          'body lotion': 1,
+          'shampoo': 1,
+          'shower gel': 1,
+          'brush kit': 1,
+        };
+        break;
+      case 'Triple':
+        itemsToSubtract = {
+          'soap': 1,
+          'conditioner': 1,
+          'body lotion': 1,
+          'shampoo': 1,
+          'shower gel': 1,
+          'brush kit': 1,
+        };
+        break;
+      case 'Family':
+        itemsToSubtract = {
+          'soap': 1,
+          'conditioner': 1,
+          'body lotion': 1,
+          'shampoo': 1,
+          'shower gel': 1,
+          'brush kit': 2,
+        };
+        break;
       case 'Family Plus':
         itemsToSubtract = {
           'soap': 1,
           'conditioner': 1,
           'body lotion': 1,
           'shampoo': 1,
-          'brush kit': 1,
+          'shower gel': 1,
+          'brush kit': 2,
+        };
+        break;
+      default:
+      // For any other room type, don't subtract anything
+        itemsToSubtract = {
+          'soap': 0,
+          'conditioner': 0,
+          'body lotion': 0,
+          'shampoo': 0,
+          'shower gel': 0,
+          'brush kit': 0,
         };
         break;
     }
 
     bool hasInventoryIssue = false;
 
-    // Check if there’s enough inventory but still proceed
+    // Check if there's enough inventory but still proceed
     for (var key in itemsToSubtract.keys) {
       final inventoryItem = inventoryItems.firstWhere(
             (item) => item['item_name'].toLowerCase() == key,
@@ -204,7 +237,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
 
       if (inventoryItem == null || (inventoryItem['quantity'] ?? 0) < itemsToSubtract[key]!) {
         hasInventoryIssue = true;
-
       }
     }
 
