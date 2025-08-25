@@ -54,21 +54,18 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
     });
 
     try {
-      List<Map<String, dynamic>> allRecords = [];
+      final selectedDate = DateTime(int.parse(_selectedYear), int.parse(_selectedMonth));
+      print('Fetching ${_selectedType} for ${selectedDate.year}/${selectedDate.month}');
 
-      // TODO: Uncomment these lines when you import the API service
+      List<Map<String, dynamic>> filteredRecords = [];
+
       if (_selectedType == 'Salaries') {
-        allRecords = await _apiService.fetchSalaries();
+        filteredRecords = await _apiService.fetchSalariesForMonth(selectedDate);
       } else {
-        allRecords = await _apiService.fetchExpenses();
+        filteredRecords = await _apiService.fetchExpensesForMonth(selectedDate);
       }
 
-      // Filter by month and year
-      final filteredRecords = allRecords.where((record) {
-        final recordDate = DateTime.parse(record['date'] ?? record['createdAt']);
-        return recordDate.month.toString() == _selectedMonth &&
-            recordDate.year.toString() == _selectedYear;
-      }).toList();
+      print('Fetched ${filteredRecords.length} records');
 
       setState(() {
         _records = filteredRecords;
@@ -76,6 +73,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
         _isLoading = false;
       });
     } catch (e) {
+      print('Error: $e');
       setState(() {
         _isLoading = false;
       });

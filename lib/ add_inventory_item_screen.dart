@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:odon_booking/home_screen.dart';
 import 'api_service.dart';
+import "edit_inventory_item_screen.dart";
 class AddInventoryItemScreen extends StatefulWidget {
   @override
   _AddInventoryItemScreenState createState() => _AddInventoryItemScreenState();
@@ -232,72 +233,112 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
 
 
   Widget _buildInventoryCard(Map<String, dynamic> item) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      elevation: 6,
-      shadowColor: Colors.grey.shade300,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.indigo.shade400, Colors.blue.shade200],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: () async {
+        // Navigate to edit screen when card is tapped
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EditInventoryItemScreen(item: item),
           ),
+        );
+
+        // If the edit screen returned true (item was updated/deleted), refresh the list
+        if (result == true) {
+          setState(() {
+            _inventoryItems = _apiService.fetchInventoryItems();
+          });
+        }
+      },
+      child: Card(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Minimize height to fit content
-          children: [
-            // Item Name
-            Text(
-              item['item_name'] ?? 'Unnamed Item',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.white,
+        elevation: 6,
+        shadowColor: Colors.grey.shade300,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.indigo.shade400, Colors.blue.shade200],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Add tap indicator
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      item['item_name'] ?? 'Unnamed Item',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.edit,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
+                ],
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis, // Truncate text if it overflows
-            ),
-            const SizedBox(height: 10),
-            // Quantity Row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Icon(Icons.inventory_2, size: 18, color: Colors.white),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'Quantity: ${item['quantity'] ?? '0'}',
-                    style: const TextStyle(fontSize: 14, color: Colors.white70),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis, // Truncate text
+              const SizedBox(height: 10),
+              // Quantity Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Icon(Icons.inventory_2, size: 18, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Quantity: ${item['quantity'] ?? '0'}',
+                      style: const TextStyle(fontSize: 14, color: Colors.white70),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Purchase Date Row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Icon(Icons.calendar_today, size: 18, color: Colors.white),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'Date: ${item['purchasedDate']?.split('T')[0] ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 14, color: Colors.white70),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis, // Truncate text
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Purchase Date Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Icon(Icons.calendar_today, size: 18, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Date: ${item['purchasedDate']?.split('T')[0] ?? 'N/A'}',
+                      style: const TextStyle(fontSize: 14, color: Colors.white70),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              // Add hint text
+              const Text(
+                'Tap to edit',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white60,
+                  fontStyle: FontStyle.italic,
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

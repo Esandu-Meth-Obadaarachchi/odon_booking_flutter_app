@@ -379,69 +379,113 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                 ),
                 SizedBox(height: 8),
 
-                // Multiple Room Selection
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
                   itemCount: _selectedRooms.length,
                   itemBuilder: (context, index) {
                     return Card(
-                      margin: EdgeInsets.only(bottom: 8),
+                      margin: EdgeInsets.only(bottom: 12),
                       child: Padding(
-                        padding: EdgeInsets.all(8),
-                        child: Row(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              flex: 2,
-                              child: DropdownButtonFormField<String>(
-                                decoration: InputDecoration(
-                                  labelText: 'Room Type',
-                                  border: OutlineInputBorder(),
+                            // Header with room number and delete button
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Room ${index + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                                value: _selectedRooms[index].type,
-                                items: [
-                                  'Double',
-                                  'Triple',
-                                  'Family',
-                                  'Family Plus',
-                                ].map<DropdownMenuItem<String>>((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Text(value),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  if (newValue != null) {
-                                    _updateRoomType(index, newValue);
-                                  }
-                                },
-                              ),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: _selectedRooms.length > 1
+                                      ? () => _removeRoom(index)
+                                      : null,
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              flex: 2,
-                              child: Row(
-                                children: [
-                                  Text('Quantity: '),
-                                  IconButton(
-                                    icon: Icon(Icons.remove),
-                                    onPressed: _selectedRooms[index].quantity > 1
-                                        ? () => _updateRoomQuantity(index, _selectedRooms[index].quantity - 1)
-                                        : null,
-                                  ),
-                                  Text('${_selectedRooms[index].quantity}'),
-                                  IconButton(
-                                    icon: Icon(Icons.add),
-                                    onPressed: () => _updateRoomQuantity(index, _selectedRooms[index].quantity + 1),
-                                  ),
-                                ],
+                            SizedBox(height: 12),
+
+                            // Room Type Dropdown - Full Width
+                            DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                labelText: 'Room Type',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               ),
+                              value: _selectedRooms[index].type,
+                              items: [
+                                'Double',
+                                'Triple',
+                                'Family',
+                                'Family Plus',
+                              ].map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                if (newValue != null) {
+                                  _updateRoomType(index, newValue);
+                                }
+                              },
                             ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: _selectedRooms.length > 1
-                                  ? () => _removeRoom(index)
-                                  : null,
+
+                            SizedBox(height: 12),
+
+                            // Quantity Controls - Centered
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Quantity: ',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey[300]!),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.remove),
+                                        onPressed: _selectedRooms[index].quantity > 1
+                                            ? () => _updateRoomQuantity(index, _selectedRooms[index].quantity - 1)
+                                            : null,
+                                        constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                                      ),
+                                      Container(
+                                        constraints: BoxConstraints(minWidth: 40),
+                                        child: Text(
+                                          '${_selectedRooms[index].quantity}',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.add),
+                                        onPressed: () => _updateRoomQuantity(index, _selectedRooms[index].quantity + 1),
+                                        constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),

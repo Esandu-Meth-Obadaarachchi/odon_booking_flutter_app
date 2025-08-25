@@ -412,6 +412,46 @@ app.delete('/expenses/:id', async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+
 });
 
 
+// Get expenses for a specific month
+app.get('/expenses/month/:year/:month', async (req, res) => {
+  try {
+    const { year, month } = req.params;
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const expenses = await Expense.find({
+      date: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    }).sort({ date: -1 });
+
+    res.json(expenses);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get salaries for a specific month
+app.get('/salaries/month/:year/:month', async (req, res) => {
+  try {
+    const { year, month } = req.params;
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const salaries = await Salary.find({
+      date: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    }).sort({ date: -1 });
+
+    res.json(salaries);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});

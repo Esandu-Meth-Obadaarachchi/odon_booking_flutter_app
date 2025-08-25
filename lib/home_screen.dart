@@ -263,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             _buildActionCard(
               'New Booking',
-              'Add room reservations',
+              'Add reservations',
               Icons.add_circle_outline,
               Color(0xFF6366F1),
                   () => Navigator.push(context, MaterialPageRoute(builder: (context) => RoomSelectionScreen())),

@@ -246,6 +246,47 @@ class ApiService {
     }
   }
 
+
+  // Fetch expenses for a specific month
+  Future<List<Map<String, dynamic>>> fetchExpensesForMonth(DateTime month) async {
+    final response = await http.get(
+        Uri.parse('$baseUrl/expenses/month/${month.year}/${month.month}')
+    );
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch expenses for month: ${response.reasonPhrase}');
+    }
+  }
+
+// Fetch salaries for a specific month
+  Future<List<Map<String, dynamic>>> fetchSalariesForMonth(DateTime month) async {
+    final response = await http.get(
+        Uri.parse('$baseUrl/salaries/month/${month.year}/${month.month}')
+    );
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch salaries for month: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> deleteInventoryItem(String id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/inventory/$id'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete inventory item: ${response.reasonPhrase}');
+    }
+  }
 }
+
+
 
 //ipconfig getifaddr en0
