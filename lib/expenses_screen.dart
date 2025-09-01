@@ -99,15 +99,52 @@ class _SalaryTabState extends State<SalaryTab> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   String _selectedType = 'OT';
+
+  // Date selection variables
+  String _selectedMonth = DateTime.now().month.toString();
+  String _selectedYear = DateTime.now().year.toString();
+  int _selectedDay = DateTime.now().day;
+
   final List<String> _salaryTypes = ['OT', 'Monthly', 'Weekly', 'Commission'];
   final ApiService _apiService = ApiService();
   final ImageProcessorService _imageProcessor = ImageProcessorService();
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _amountController.dispose();
-    super.dispose();
+  final List<String> _months = [
+    '1', '2', '3', '4', '5', '6',
+    '7', '8', '9', '10', '11', '12'
+  ];
+
+  final List<String> _monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  final List<String> _years = [
+    '2023', '2024', '2025', '2026', '2027'
+  ];
+
+  // Get days for selected month/year
+  List<int> get _daysInMonth {
+    final month = int.parse(_selectedMonth);
+    final year = int.parse(_selectedYear);
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    return List.generate(daysInMonth, (index) => index + 1);
+  }
+
+  // Ensure selected day is valid for the month
+  void _validateSelectedDay() {
+    final maxDays = _daysInMonth.length;
+    if (_selectedDay > maxDays) {
+      _selectedDay = maxDays;
+    }
+  }
+
+  DateTime get _selectedDate {
+    return DateTime(
+      int.parse(_selectedYear),
+      int.parse(_selectedMonth),
+      _selectedDay,
+    );
   }
 
   void _submitSalary() async {
@@ -117,7 +154,7 @@ class _SalaryTabState extends State<SalaryTab> {
           'employeeName': _nameController.text,
           'salaryType': _selectedType,
           'amount': double.parse(_amountController.text),
-          'date': DateTime.now().toIso8601String(),
+          'date': _selectedDate.toIso8601String(),
         };
 
         await _apiService.addSalary(salaryData);
@@ -140,7 +177,6 @@ class _SalaryTabState extends State<SalaryTab> {
     }
   }
 
-  // Add this method to BOTH SalaryTab and ExpensesTab classes if not already present:
   Future<void> _saveBatchSalaries(List<Map<String, dynamic>> salaries) async {
     try {
       for (var salary in salaries) {
@@ -153,11 +189,10 @@ class _SalaryTabState extends State<SalaryTab> {
           backgroundColor: Colors.red,
         ),
       );
-      rethrow; // Re-throw to handle in calling method
+      rethrow;
     }
   }
 
-// Add this method to BOTH SalaryTab and ExpensesTab classes if not already present:
   Future<void> _saveBatchExpenses(List<Map<String, dynamic>> expenses) async {
     try {
       for (var expense in expenses) {
@@ -170,18 +205,15 @@ class _SalaryTabState extends State<SalaryTab> {
           backgroundColor: Colors.red,
         ),
       );
-      rethrow; // Re-throw to handle in calling method
+      rethrow;
     }
   }
 
-
   void _processImageWithAI() async {
     try {
-      // Extract data using the image processor
       final extractedData = await _imageProcessor.processImage(context);
 
       if (extractedData.isNotEmpty) {
-        // Show confirmation dialog
         final result = await showDialog<Map<String, dynamic>>(
           context: context,
           builder: (context) => DataConfirmationDialog(
@@ -190,27 +222,22 @@ class _SalaryTabState extends State<SalaryTab> {
         );
 
         if (result != null) {
-          // Get separated data from the result
           final salaryData = result['salaryData'] as List<Map<String, dynamic>>? ?? [];
           final expenseData = result['expenseData'] as List<Map<String, dynamic>>? ?? [];
 
-          // Save BOTH types regardless of which tab we're on
           int savedSalaries = 0;
           int savedExpenses = 0;
 
-          // Save salary data if exists
           if (salaryData.isNotEmpty) {
             await _saveBatchSalaries(salaryData);
             savedSalaries = salaryData.length;
           }
 
-          // Save expense data if exists
           if (expenseData.isNotEmpty) {
             await _saveBatchExpenses(expenseData);
             savedExpenses = expenseData.length;
           }
 
-          // Show success message with counts for both types
           if (savedSalaries > 0 || savedExpenses > 0) {
             String message = 'Successfully added ';
             if (savedSalaries > 0 && savedExpenses > 0) {
@@ -231,7 +258,6 @@ class _SalaryTabState extends State<SalaryTab> {
           }
         }
       } else {
-        // Show message when no data is extracted
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('No financial data found in the image. Please try with a clearer image containing expense or salary information.'),
@@ -252,15 +278,14 @@ class _SalaryTabState extends State<SalaryTab> {
     }
   }
 
-
-
-
-
   void _clearForm() {
     _nameController.clear();
     _amountController.clear();
     setState(() {
       _selectedType = 'OT';
+      _selectedMonth = DateTime.now().month.toString();
+      _selectedYear = DateTime.now().year.toString();
+      _selectedDay = DateTime.now().day;
     });
   }
 
@@ -333,6 +358,119 @@ class _SalaryTabState extends State<SalaryTab> {
                       ),
                     ),
                     SizedBox(height: 24),
+
+                    // Date Selection Section
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today, color: Color(0xFFEF4444), size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Select Date',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          // Month Dropdown - Full width
+                          DropdownButtonFormField<String>(
+                            value: _selectedMonth,
+                            decoration: InputDecoration(
+                              labelText: 'Month',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            items: _months.map((String month) {
+                              return DropdownMenuItem<String>(
+                                value: month,
+                                child: Text(_monthNames[int.parse(month) - 1]),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedMonth = newValue!;
+                                _validateSelectedDay();
+                              });
+                            },
+                          ),
+                          SizedBox(height: 8),
+                          // Year and Day in a row with more space
+                          Row(
+                            children: [
+                              // Year Dropdown
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedYear,
+                                  decoration: InputDecoration(
+                                    labelText: 'Year',
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  ),
+                                  items: _years.map((String year) {
+                                    return DropdownMenuItem<String>(
+                                      value: year,
+                                      child: Text(year),
+                                    );
+                                  }).toList(),
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      _selectedYear = newValue!;
+                                      _validateSelectedDay();
+                                    });
+                                  },
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              // Day Dropdown
+                              Expanded(
+                                child: DropdownButtonFormField<int>(
+                                  value: _selectedDay,
+                                  decoration: InputDecoration(
+                                    labelText: 'Day',
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  ),
+                                  items: _daysInMonth.map((int day) {
+                                    return DropdownMenuItem<int>(
+                                      value: day,
+                                      child: Text(day.toString()),
+                                    );
+                                  }).toList(),
+                                  onChanged: (int? newValue) {
+                                    setState(() {
+                                      _selectedDay = newValue!;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Selected: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFFEF4444),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 16),
 
                     // Employee Name Field
                     TextFormField(

@@ -176,13 +176,13 @@ class ImageProcessorService {
   String _getUnifiedPrompt() {
     return '''
 Analyze this image and extract ALL financial data including both expenses and salary/payment information. Look for tables, lists, or any structured data containing names/descriptions and amounts.
-
+get the date from the image as well , it will be mentioned in the left side , like the month and date. give the date in this format {DateTime.now().toIso8601String()}
 Please extract the data and format it as JSON array with this structure:
 [
   {
     "itemName": "John Doe" or "Office Supplies",
     "amount": 50000,
-    "date": "${DateTime.now().toIso8601String()}",
+    "date": "",
     "suggestedType": "salary" or "expense",
     "suggestedCategory": "Monthly" or "Food" or "Utilities" etc,
     "description": "Any additional context or reason if available"
