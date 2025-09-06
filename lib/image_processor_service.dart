@@ -28,7 +28,7 @@ class ImageProcessorService {
       // Pick image
       final XFile? image = await _picker.pickImage(
         source: source,
-        imageQuality: 85, // Compress image to reduce API costs
+        imageQuality: 95, // Increased quality for better OCR
       );
       if (image == null) {
         print('No image selected');
@@ -110,7 +110,7 @@ class ImageProcessorService {
   Future<List<Map<String, dynamic>>> _processWithGemini(String base64Image) async {
     try {
       print('Sending request to Gemini API...');
-      final prompt = _getUnifiedPrompt();
+      final prompt = _getEnhancedPrompt();
 
       final requestBody = {
         'contents': [
@@ -129,10 +129,10 @@ class ImageProcessorService {
           }
         ],
         'generationConfig': {
-          'temperature': 0.1, // Low temperature for more consistent output
+          'temperature': 0.05, // Very low temperature for more consistent output
           'topK': 1,
-          'topP': 1,
-          'maxOutputTokens': 4096, // Increased from 2048 to handle more data
+          'topP': 0.8,
+          'maxOutputTokens': 8192, // Increased for more data
         }
       };
 
@@ -172,39 +172,65 @@ class ImageProcessorService {
     }
   }
 
-  // New unified prompt that extracts all data
-  String _getUnifiedPrompt() {
+  // Enhanced prompt with specific instructions for date extraction
+  String _getEnhancedPrompt() {
+    final currentYear = DateTime.now().year;
     return '''
-Analyze this image and extract ALL financial data including both expenses and salary/payment information. Look for tables, lists, or any structured data containing names/descriptions and amounts.
-get the date from the image as well , it will be mentioned in the left side , like the month and date. give the date in this format {DateTime.now().toIso8601String()}
-Please extract the data and format it as JSON array with this structure:
+IMPORTANT: Analyze this financial ledger/document image very carefully and extract ALL data with maximum accuracy.
+
+CRITICAL DATE EXTRACTION RULES:
+- Look for dates on the LEFT SIDE of each row/line
+- Dates are typically in MM-DD format (like 07-02, 07-05, 09-01, etc.)
+- The month comes FIRST, then the day (MM-DD)
+- Convert these to full dates using current year ($currentYear)
+- If you see "07-02", convert it to "2025-07-02T00:00:00.000Z"
+- If you see "09-01", convert it to "2025-09-01T00:00:00.000Z"
+- Pay close attention to the leftmost column for these date patterns
+
+DATA EXTRACTION RULES:
+1. Extract EVERY line that has both a description/name AND an amount
+2. Look for patterns like:
+   - "ROOM" entries with amounts
+   - Person names with salary amounts
+   - Service/item descriptions with costs
+   - Bills and expenses
+
+3. For each entry, determine if it's:
+   - SALARY: If it looks like a person's name or salary-related term
+   - EXPENSE: If it looks like a service, item, bill, or cost
+
+FORMAT REQUIREMENTS - Return ONLY valid JSON array:
 [
   {
-    "itemName": "John Doe" or "Office Supplies",
-    "amount": 50000,
-    "date": "",
+    "itemName": "ROOM" or "John Doe" or "ELECTRICITY BILL",
+    "amount": 25000,
+    "date": "2025-07-02T00:00:00.000Z",
     "suggestedType": "salary" or "expense",
     "suggestedCategory": "Monthly" or "Food" or "Utilities" etc,
-    "description": "Any additional context or reason if available"
+    "description": "Additional context if visible"
   }
 ]
 
-Instructions:
-- Extract ALL visible names/descriptions and their corresponding amounts
-- For suggestedType: analyze if it looks like a person's name (likely salary) or item/service (likely expense)
-- For suggestedCategory: 
-  - If suggestedType is "salary": use "Monthly", "Weekly", "OT", "Commission"
-  - If suggestedType is "expense": use "Food", "Utilities", "Maintenance", "Supplies", "Transportation", "Marketing", "Equipment", "Other"
-- Use current date/time for the date field
-- Only include entries where both name and amount are clearly visible
-- Convert amounts to numbers (remove currency symbols, commas)
-- Add any additional context in description field
-- Return only valid JSON, no additional text or explanations
-- If no data is found, return empty array []
+CATEGORY MAPPING:
+- For SALARY type: use "Monthly", "Weekly", "OT", "Commission"
+- For EXPENSE type: use "Food", "Utilities", "Maintenance", "Supplies", "Transportation", "Marketing", "Equipment", "Other"
+
+AMOUNT PROCESSING:
+- Extract numeric values only
+- Remove currency symbols, commas, spaces
+- Convert to number format
+
+QUALITY CONTROL:
+- Only include entries where BOTH name AND amount are clearly visible
+- Double-check date extraction - this is CRITICAL
+- Ignore entries that are unclear or ambiguous
+- Return empty array [] if no clear data found
+
+Return ONLY the JSON array, no explanations or additional text.
 ''';
   }
 
-  // Updated parsing method
+  // Enhanced parsing method with better error handling
   List<Map<String, dynamic>> _parseGeminiResponse(String response) {
     try {
       print('Raw response length: ${response.length}');
@@ -235,18 +261,22 @@ Instructions:
           final result = jsonArray.map((item) {
             if (item is Map<String, dynamic>) {
               final parsedItem = {
-                'itemName': item['itemName']?.toString() ?? '',
+                'itemName': item['itemName']?.toString().trim() ?? '',
                 'amount': _parseAmount(item['amount']),
-                'date': item['date']?.toString() ?? DateTime.now().toIso8601String(),
-                'suggestedType': item['suggestedType']?.toString() ?? 'expense',
-                'suggestedCategory': item['suggestedCategory']?.toString() ?? 'Other',
-                'description': item['description']?.toString() ?? '',
+                'date': _parseAndValidateDate(item['date']),
+                'suggestedType': _validateType(item['suggestedType']?.toString()),
+                'suggestedCategory': _validateCategory(item['suggestedCategory']?.toString(), _validateType(item['suggestedType']?.toString())),
+                'description': item['description']?.toString().trim() ?? '',
               };
               print('Parsed item: $parsedItem');
               return parsedItem;
             }
             return <String, dynamic>{};
-          }).where((item) => item.isNotEmpty).toList();
+          }).where((item) =>
+          item.isNotEmpty &&
+              item['itemName'] != '' &&
+              (item['amount'] as double) > 0
+          ).toList();
 
           print('Final result count: ${result.length}');
           return result;
@@ -267,38 +297,132 @@ Instructions:
     }
   }
 
-  // Helper method to parse incomplete JSON
+  // Enhanced date parsing and validation
+  String _parseAndValidateDate(dynamic dateInput) {
+    if (dateInput == null) {
+      return DateTime.now().toIso8601String();
+    }
+
+    final dateStr = dateInput.toString();
+
+    // Try to parse existing ISO format
+    final existingDate = DateTime.tryParse(dateStr);
+    if (existingDate != null) {
+      return existingDate.toIso8601String();
+    }
+
+    // Try to parse MM-DD format and convert to current year
+    final mmDdPattern = RegExp(r'^(\d{1,2})-(\d{1,2})$');
+    final match = mmDdPattern.firstMatch(dateStr);
+    if (match != null) {
+      final month = int.tryParse(match.group(1)!) ?? 1;
+      final day = int.tryParse(match.group(2)!) ?? 1;
+      final currentYear = DateTime.now().year;
+
+      try {
+        final parsedDate = DateTime(currentYear, month, day);
+        return parsedDate.toIso8601String();
+      } catch (e) {
+        print('Error parsing MM-DD date: $e');
+      }
+    }
+
+    // Fallback to current date
+    return DateTime.now().toIso8601String();
+  }
+
+  // Validate and normalize type
+  String _validateType(String? type) {
+    if (type == null) return 'expense';
+    final lowerType = type.toLowerCase().trim();
+    return lowerType == 'salary' ? 'salary' : 'expense';
+  }
+
+  // Validate and normalize category based on type
+  String _validateCategory(String? category, String type) {
+    if (category == null) return type == 'salary' ? 'Monthly' : 'Other';
+
+    final lowerCategory = category.toLowerCase().trim();
+
+    if (type == 'salary') {
+      const salaryCategories = ['monthly', 'weekly', 'ot', 'commission'];
+      for (final cat in salaryCategories) {
+        if (lowerCategory.contains(cat)) {
+          return _capitalizeFirst(cat);
+        }
+      }
+      return 'Monthly';
+    } else {
+      const expenseCategories = [
+        'food', 'utilities', 'maintenance', 'supplies',
+        'transportation', 'marketing', 'equipment', 'other'
+      ];
+      for (final cat in expenseCategories) {
+        if (lowerCategory.contains(cat)) {
+          return _capitalizeFirst(cat);
+        }
+      }
+      return 'Other';
+    }
+  }
+
+  String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1).toLowerCase();
+  }
+
+  // Helper method to parse incomplete JSON (enhanced)
   List<Map<String, dynamic>> _parseIncompleteJson(String jsonString) {
     try {
       print('Attempting to parse incomplete JSON...');
 
       List<Map<String, dynamic>> validItems = [];
 
-      // Find complete objects by looking for pattern: { ... }
-      // More aggressive pattern to catch incomplete objects
-      final objectPattern = RegExp(r'\{[^{}]*"itemName"[^{}]*"amount"[^{}]*\}', multiLine: true, dotAll: true);
+      // Enhanced regex pattern to catch more object variations
+      final objectPattern = RegExp(
+          r'\{[^{}]*?"itemName"[^{}]*?"amount"[^{}]*?\}',
+          multiLine: true,
+          dotAll: true
+      );
       final matches = objectPattern.allMatches(jsonString);
 
       print('Found ${matches.length} potential object matches');
 
       for (final match in matches) {
         try {
-          final objectString = match.group(0)!;
+          String objectString = match.group(0)!;
+
+          // Clean up the object string
+          objectString = objectString
+              .replaceAll(RegExp(r'\n\s*'), ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+
           print('Trying to parse object: $objectString');
 
           final Map<String, dynamic> item = jsonDecode(objectString);
 
-          if (item.containsKey('itemName') && item.containsKey('amount')) {
+          if (item.containsKey('itemName') &&
+              item.containsKey('amount') &&
+              item['itemName'].toString().trim().isNotEmpty) {
+
             final parsedItem = {
-              'itemName': item['itemName']?.toString() ?? '',
+              'itemName': item['itemName'].toString().trim(),
               'amount': _parseAmount(item['amount']),
-              'date': item['date']?.toString() ?? DateTime.now().toIso8601String(),
-              'suggestedType': item['suggestedType']?.toString() ?? 'expense',
-              'suggestedCategory': item['suggestedCategory']?.toString() ?? 'Other',
-              'description': item['description']?.toString() ?? '',
+              'date': _parseAndValidateDate(item['date']),
+              'suggestedType': _validateType(item['suggestedType']?.toString()),
+              'suggestedCategory': _validateCategory(
+                  item['suggestedCategory']?.toString(),
+                  _validateType(item['suggestedType']?.toString())
+              ),
+              'description': item['description']?.toString().trim() ?? '',
             };
-            validItems.add(parsedItem);
-            print('Successfully parsed object: $parsedItem');
+
+            // Only add if amount is valid
+            if ((parsedItem['amount'] as double) > 0) {
+              validItems.add(parsedItem);
+              print('Successfully parsed object: $parsedItem');
+            }
           }
         } catch (e) {
           print('Failed to parse object: $e');
@@ -320,7 +444,7 @@ Instructions:
     }
   }
 
-  // Alternative parsing method - extract data line by line
+  // Enhanced line-by-line parsing
   List<Map<String, dynamic>> _parseLineByLine(String jsonString) {
     try {
       print('Attempting line-by-line parsing...');
@@ -336,30 +460,53 @@ Instructions:
       String? currentDescription;
 
       for (String line in lines) {
-        line = line.trim().replaceAll(',', '').replaceAll('"', '');
+        line = line.trim().replaceAll(RegExp(r'[",]$'), '');
 
-        if (line.contains('itemName:')) {
-          currentItemName = line.split(':').last.trim();
-        } else if (line.contains('amount:')) {
-          currentAmount = _parseAmount(line.split(':').last.trim());
-        } else if (line.contains('date:')) {
-          currentDate = line.split(':').last.trim();
-        } else if (line.contains('suggestedType:')) {
-          currentType = line.split(':').last.trim();
-        } else if (line.contains('suggestedCategory:')) {
-          currentCategory = line.split(':').last.trim();
-        } else if (line.contains('description:')) {
-          currentDescription = line.split(':').last.trim();
+        if (line.contains('itemName')) {
+          final parts = line.split(':');
+          if (parts.length > 1) {
+            currentItemName = parts[1].trim().replaceAll(RegExp(r'[",]'), '');
+          }
+        } else if (line.contains('amount')) {
+          final parts = line.split(':');
+          if (parts.length > 1) {
+            currentAmount = _parseAmount(parts[1].trim().replaceAll(RegExp(r'[",]'), ''));
+          }
+        } else if (line.contains('date')) {
+          final parts = line.split(':');
+          if (parts.length > 1) {
+            currentDate = parts[1].trim().replaceAll(RegExp(r'[",]'), '');
+          }
+        } else if (line.contains('suggestedType')) {
+          final parts = line.split(':');
+          if (parts.length > 1) {
+            currentType = parts[1].trim().replaceAll(RegExp(r'[",]'), '');
+          }
+        } else if (line.contains('suggestedCategory')) {
+          final parts = line.split(':');
+          if (parts.length > 1) {
+            currentCategory = parts[1].trim().replaceAll(RegExp(r'[",]'), '');
+          }
+        } else if (line.contains('description')) {
+          final parts = line.split(':');
+          if (parts.length > 1) {
+            currentDescription = parts[1].trim().replaceAll(RegExp(r'[",]'), '');
+          }
         }
 
         // When we hit a closing brace or start of new object, save current item
-        if (line.contains('}') && currentItemName != null && currentAmount != null) {
+        if ((line.contains('}') || line.contains('{')) &&
+            currentItemName != null &&
+            currentAmount != null &&
+            currentItemName.isNotEmpty &&
+            currentAmount > 0) {
+
           final parsedItem = {
             'itemName': currentItemName,
             'amount': currentAmount,
-            'date': currentDate ?? DateTime.now().toIso8601String(),
-            'suggestedType': currentType ?? 'expense',
-            'suggestedCategory': currentCategory ?? 'Other',
+            'date': _parseAndValidateDate(currentDate),
+            'suggestedType': _validateType(currentType),
+            'suggestedCategory': _validateCategory(currentCategory, _validateType(currentType)),
             'description': currentDescription ?? '',
           };
           validItems.add(parsedItem);
@@ -387,9 +534,10 @@ Instructions:
     if (amount is double) return amount;
     if (amount is int) return amount.toDouble();
     if (amount is String) {
-      // Remove currency symbols, commas, and spaces
+      // Remove currency symbols, commas, spaces, and other non-numeric characters
       final cleanedAmount = amount.replaceAll(RegExp(r'[^\d.]'), '');
-      return double.tryParse(cleanedAmount) ?? 0.0;
+      final parsed = double.tryParse(cleanedAmount) ?? 0.0;
+      return parsed;
     }
     return 0.0;
   }

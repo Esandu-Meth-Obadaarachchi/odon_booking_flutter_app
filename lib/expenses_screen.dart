@@ -607,6 +607,12 @@ class _ExpensesTabState extends State<ExpensesTab> {
   final ApiService _apiService = ApiService();
   final ImageProcessorService _imageProcessor = ImageProcessorService();
 
+  // Autocomplete related variables
+  List<String> _expenseNameSuggestions = [];
+  bool _showSuggestions = false;
+  FocusNode _nameFieldFocusNode = FocusNode();
+  OverlayEntry? _overlayEntry;
+
   final List<String> _expenseCategories = [
     'Food',
     'Utilities',
@@ -619,11 +625,162 @@ class _ExpensesTabState extends State<ExpensesTab> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadExpenseNames();
+    _nameController.addListener(_onNameFieldChanged);
+    _nameFieldFocusNode.addListener(_onFocusChanged);
+  }
+
+  @override
   void dispose() {
+    _nameController.removeListener(_onNameFieldChanged);
+    _nameFieldFocusNode.removeListener(_onFocusChanged);
     _nameController.dispose();
     _amountController.dispose();
     _reasonController.dispose();
+    _nameFieldFocusNode.dispose();
+    _removeOverlay();
     super.dispose();
+  }
+
+  // Load all expense names from the API
+  Future<void> _loadExpenseNames() async {
+    try {
+      final expenses = await _apiService.fetchExpenses();
+      final uniqueNames = <String>{};
+
+      for (var expense in expenses) {
+        if (expense['expenseName'] != null && expense['expenseName'].toString().trim().isNotEmpty) {
+          uniqueNames.add(expense['expenseName'].toString().trim());
+        }
+      }
+
+      setState(() {
+        _expenseNameSuggestions = uniqueNames.toList()..sort();
+      });
+    } catch (e) {
+      print('Error loading expense names: $e');
+    }
+  }
+
+  void _onNameFieldChanged() {
+    final query = _nameController.text.toLowerCase();
+    if (query.isNotEmpty && _nameFieldFocusNode.hasFocus) {
+      final filteredSuggestions = _expenseNameSuggestions
+          .where((name) => name.toLowerCase().contains(query))
+          .take(5) // Limit to 5 suggestions
+          .toList();
+
+      if (filteredSuggestions.isNotEmpty) {
+        _showSuggestionsOverlay(filteredSuggestions);
+      } else {
+        _removeOverlay();
+      }
+    } else {
+      _removeOverlay();
+    }
+  }
+
+  void _onFocusChanged() {
+    if (!_nameFieldFocusNode.hasFocus) {
+      // Delay removal to allow for tap on suggestions
+      Future.delayed(Duration(milliseconds: 150), () {
+        _removeOverlay();
+      });
+    } else if (_nameController.text.isNotEmpty) {
+      _onNameFieldChanged(); // Show suggestions when field gains focus
+    }
+  }
+
+  void _showSuggestionsOverlay(List<String> suggestions) {
+    _removeOverlay(); // Remove any existing overlay
+
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final RenderBox? overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+
+    if (overlay == null) return;
+
+    // Find the text field's position
+    final textFieldRenderBox = _getTextFieldRenderBox();
+    if (textFieldRenderBox == null) return;
+
+    final position = textFieldRenderBox.localToGlobal(Offset.zero, ancestor: overlay);
+    final size = textFieldRenderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: position.dx,
+        top: position.dy + size.height + 4,
+        width: size.width,
+        child: Material(
+          elevation: 4,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: 200),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: suggestions.length,
+              itemBuilder: (context, index) {
+                final suggestion = suggestions[index];
+                return InkWell(
+                  onTap: () {
+                    _nameController.text = suggestion;
+                    _nameController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: suggestion.length),
+                    );
+                    _removeOverlay();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: index < suggestions.length - 1
+                          ? Border(bottom: BorderSide(color: Colors.grey[200]!))
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.history, size: 16, color: Colors.grey[600]),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            suggestion,
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  RenderBox? _getTextFieldRenderBox() {
+    // This method attempts to find the render box of the name text field
+    // Since we can't directly access it, we'll use the focus node's context
+    final context = _nameFieldFocusNode.context;
+    if (context != null) {
+      return context.findRenderObject() as RenderBox?;
+    }
+    return null;
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
   }
 
   void _submitExpense() async {
@@ -645,6 +802,9 @@ class _ExpensesTabState extends State<ExpensesTab> {
             backgroundColor: Colors.green,
           ),
         );
+
+        // Reload expense names to include the new one
+        _loadExpenseNames();
         _clearForm();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -659,11 +819,9 @@ class _ExpensesTabState extends State<ExpensesTab> {
 
   void _processImageWithAI() async {
     try {
-      // Extract data using the image processor
       final extractedData = await _imageProcessor.processImage(context);
 
       if (extractedData.isNotEmpty) {
-        // Show confirmation dialog
         final result = await showDialog<Map<String, dynamic>>(
           context: context,
           builder: (context) => DataConfirmationDialog(
@@ -672,27 +830,22 @@ class _ExpensesTabState extends State<ExpensesTab> {
         );
 
         if (result != null) {
-          // Get separated data from the result
           final salaryData = result['salaryData'] as List<Map<String, dynamic>>? ?? [];
           final expenseData = result['expenseData'] as List<Map<String, dynamic>>? ?? [];
 
-          // Save BOTH types regardless of which tab we're on
           int savedSalaries = 0;
           int savedExpenses = 0;
 
-          // Save salary data if exists
           if (salaryData.isNotEmpty) {
             await _saveBatchSalaries(salaryData);
             savedSalaries = salaryData.length;
           }
 
-          // Save expense data if exists
           if (expenseData.isNotEmpty) {
             await _saveBatchExpenses(expenseData);
             savedExpenses = expenseData.length;
           }
 
-          // Show success message with counts for both types
           if (savedSalaries > 0 || savedExpenses > 0) {
             String message = 'Successfully added ';
             if (savedSalaries > 0 && savedExpenses > 0) {
@@ -710,10 +863,12 @@ class _ExpensesTabState extends State<ExpensesTab> {
                 duration: Duration(seconds: 4),
               ),
             );
+
+            // Reload expense names after batch import
+            _loadExpenseNames();
           }
         }
       } else {
-        // Show message when no data is extracted
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('No financial data found in the image. Please try with a clearer image containing expense or salary information.'),
@@ -733,7 +888,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
       );
     }
   }
-  // Add this method to BOTH SalaryTab and ExpensesTab classes if not already present:
+
   Future<void> _saveBatchSalaries(List<Map<String, dynamic>> salaries) async {
     try {
       for (var salary in salaries) {
@@ -746,11 +901,10 @@ class _ExpensesTabState extends State<ExpensesTab> {
           backgroundColor: Colors.red,
         ),
       );
-      rethrow; // Re-throw to handle in calling method
+      rethrow;
     }
   }
 
-// Add this method to BOTH SalaryTab and ExpensesTab classes if not already present:
   Future<void> _saveBatchExpenses(List<Map<String, dynamic>> expenses) async {
     try {
       for (var expense in expenses) {
@@ -763,11 +917,9 @@ class _ExpensesTabState extends State<ExpensesTab> {
           backgroundColor: Colors.red,
         ),
       );
-      rethrow; // Re-throw to handle in calling method
+      rethrow;
     }
   }
-
-
 
   void _clearForm() {
     _nameController.clear();
@@ -777,6 +929,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
       _selectedCategory = 'Food';
       _selectedDate = DateTime.now();
     });
+    _removeOverlay();
   }
 
   Future<void> _selectDate() async {
@@ -876,13 +1029,23 @@ class _ExpensesTabState extends State<ExpensesTab> {
                     ),
                     SizedBox(height: 24),
 
-                    // Expense Name Field
+                    // Expense Name Field with Autocomplete
                     TextFormField(
                       controller: _nameController,
+                      focusNode: _nameFieldFocusNode,
                       decoration: InputDecoration(
                         labelText: 'Expense Name',
-                        hintText: 'Enter expense name',
+                        hintText: 'Enter expense name (suggestions will appear)',
                         prefixIcon: Icon(Icons.receipt, color: Color(0xFFEF4444)),
+                        suffixIcon: _nameController.text.isNotEmpty
+                            ? IconButton(
+                          icon: Icon(Icons.clear, size: 20),
+                          onPressed: () {
+                            _nameController.clear();
+                            _removeOverlay();
+                          },
+                        )
+                            : Icon(Icons.search, color: Colors.grey[400]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),

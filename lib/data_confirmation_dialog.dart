@@ -117,7 +117,7 @@ class _DataConfirmationDialogState extends State<DataConfirmationDialog> {
         _buildDetailRow('Type', item.itemType),
         _buildDetailRow('Category', item.category),
         _buildDetailRow('Amount', '\$${item.amount?.toStringAsFixed(2) ?? '0.00'}'),
-        _buildDetailRow('Date', _formatDate(item.date)),
+        _buildEditableDateRow(index), // New editable date row
         if (item.description?.isNotEmpty == true)
           _buildDetailRow('Description', item.description!),
       ],
@@ -165,6 +165,70 @@ class _DataConfirmationDialogState extends State<DataConfirmationDialog> {
     );
   }
 
+  Widget _buildEditableDateRow(int index) {
+    final item = items[index];
+    final formattedDate = _formatDate(item.date);
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              'Date:',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _editDate(index),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: Colors.orange[200]!,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: Colors.orange[700],
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      formattedDate,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.orange[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.edit,
+                      size: 14,
+                      color: Colors.orange[600],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDate(DateTime? date) {
     if (date == null) return 'N/A';
     return '${date.day}/${date.month}/${date.year}';
@@ -172,6 +236,63 @@ class _DataConfirmationDialogState extends State<DataConfirmationDialog> {
 
   int _getSelectedCount() {
     return selectedItems.where((selected) => selected).length;
+  }
+
+  Future<void> _editDate(int index) async {
+    final currentDate = items[index].date ?? DateTime.now();
+
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: currentDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Color(0xFFEF4444), // Your app's primary color
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+            dialogBackgroundColor: Colors.white,
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (selectedDate != null && selectedDate != currentDate) {
+      setState(() {
+        items[index] = DataItem(
+          itemName: items[index].itemName,
+          amount: items[index].amount,
+          date: selectedDate,
+          itemType: items[index].itemType,
+          category: items[index].category,
+          description: items[index].description,
+        );
+      });
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Date updated successfully!'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
   }
 
   void _editItem(int index) {
@@ -342,6 +463,46 @@ class _EditItemDialogState extends State<_EditItemDialog> {
             ),
             SizedBox(height: 16),
 
+            // Enhanced Date Field with Calendar Icon
+            GestureDetector(
+              onTap: _selectDate,
+              child: Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[400]!),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today, color: Color(0xFFEF4444)),
+                    SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Date',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Spacer(),
+                    Icon(Icons.edit, color: Colors.grey[600], size: 18),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+
             // Description
             TextField(
               controller: descriptionController,
@@ -370,6 +531,35 @@ class _EditItemDialogState extends State<_EditItemDialog> {
         ),
       ],
     );
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Color(0xFFEF4444),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+            dialogBackgroundColor: Colors.white,
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
   }
 
   void _saveChanges() {
