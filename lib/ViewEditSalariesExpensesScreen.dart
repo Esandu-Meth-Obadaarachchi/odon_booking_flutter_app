@@ -12,6 +12,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
   String _selectedType = 'Salaries'; // Salaries or Expenses
   String _selectedMonth = DateTime.now().month.toString();
   String _selectedYear = DateTime.now().year.toString();
+  String _selectedCategory = 'All'; // New category filter
   String _searchQuery = '';
   List<Map<String, dynamic>> _records = [];
   List<Map<String, dynamic>> _filteredRecords = [];
@@ -20,6 +21,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
   final ApiService _apiService = ApiService(); // Uncomment when you import the API service
   double total = 0.0;
   String totalInString = '';
+
   final List<String> _months = [
     '1', '2', '3', '4', '5', '6',
     '7', '8', '9', '10', '11', '12'
@@ -34,6 +36,30 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
     '2023', '2024', '2025', '2026', '2027'
   ];
 
+  final List<String> _salaryTypes = ['OT', 'Monthly', 'Weekly', 'Commission'];
+
+  final List<String> _expenseCategories = [
+    'Food',
+    'Utilities',
+    'Maintenance',
+    'Supplies',
+    'Transportation',
+    'Marketing',
+    'Equipment',
+    'Other',
+  ];
+
+  // Get current category options based on selected type
+  List<String> get _currentCategoryOptions {
+    List<String> options = ['All'];
+    if (_selectedType == 'Salaries') {
+      options.addAll(_salaryTypes);
+    } else {
+      options.addAll(_expenseCategories);
+    }
+    return options;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -44,8 +70,6 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
   void initState() {
     super.initState();
     _loadRecords();
-
-
   }
 
   Future<void> _loadRecords() async {
@@ -69,7 +93,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
 
       setState(() {
         _records = filteredRecords;
-        _applySearchFilter();
+        _applyFilters();
         _isLoading = false;
       });
     } catch (e) {
@@ -86,11 +110,23 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
     }
   }
 
-  void _applySearchFilter() {
-    if (_searchQuery.isEmpty) {
-      _filteredRecords = List.from(_records);
-    } else {
-      _filteredRecords = _records.where((record) {
+  void _applyFilters() {
+    List<Map<String, dynamic>> filtered = List.from(_records);
+
+    // Apply category filter
+    if (_selectedCategory != 'All') {
+      filtered = filtered.where((record) {
+        if (_selectedType == 'Salaries') {
+          return record['salaryType'] == _selectedCategory;
+        } else {
+          return record['category'] == _selectedCategory;
+        }
+      }).toList();
+    }
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((record) {
         if (_selectedType == 'Salaries') {
           final employeeName = (record['employeeName'] ?? '').toLowerCase();
           return employeeName.contains(_searchQuery.toLowerCase());
@@ -100,6 +136,10 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
         }
       }).toList();
     }
+
+    setState(() {
+      _filteredRecords = filtered;
+    });
   }
 
   double _calculateTotal() {
@@ -159,8 +199,6 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
     final _nameController = TextEditingController(text: salary['employeeName']);
     final _amountController = TextEditingController(text: salary['amount'].toString());
     String _selectedSalaryType = salary['salaryType'];
-
-    final List<String> _salaryTypes = ['OT', 'Monthly', 'Weekly', 'Commission'];
 
     showDialog(
       context: context,
@@ -266,12 +304,8 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
     final _nameController = TextEditingController(text: expense['expenseName']);
     final _amountController = TextEditingController(text: expense['amount'].toString());
     final _reasonController = TextEditingController(text: expense['reason'] ?? '');
-    String _selectedCategory = expense['category'];
+    String _selectedExpenseCategory = expense['category'];
     DateTime _selectedDate = DateTime.parse(expense['date']);
-
-    final List<String> _expenseCategories = [
-      'Food', 'Utilities', 'Maintenance', 'Supplies', 'Transportation', 'Marketing', 'Equipment', 'Other'
-    ];
 
     showDialog(
       context: context,
@@ -293,7 +327,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                     ),
                     SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _selectedCategory,
+                      value: _selectedExpenseCategory,
                       decoration: InputDecoration(
                         labelText: 'Category',
                         border: OutlineInputBorder(),
@@ -306,7 +340,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                       }).toList(),
                       onChanged: (String? newValue) {
                         setState(() {
-                          _selectedCategory = newValue!;
+                          _selectedExpenseCategory = newValue!;
                         });
                       },
                     ),
@@ -378,7 +412,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                     try {
                       final updatedData = {
                         'expenseName': _nameController.text,
-                        'category': _selectedCategory,
+                        'category': _selectedExpenseCategory,
                         'amount': double.parse(_amountController.text),
                         'date': _selectedDate.toIso8601String(),
                         'reason': _reasonController.text,
@@ -695,8 +729,43 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                             onChanged: (String? newValue) {
                               setState(() {
                                 _selectedType = newValue!;
+                                _selectedCategory = 'All'; // Reset category when type changes
                               });
                               _loadRecords();
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                // Category Filter
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedCategory,
+                            isExpanded: true,
+                            hint: Text(_selectedType == 'Salaries' ? 'Filter by Salary Type' : 'Filter by Category'),
+                            items: _currentCategoryOptions.map((String category) {
+                              return DropdownMenuItem<String>(
+                                value: category,
+                                child: Text(category == 'All' ? 'All ${_selectedType}' : category),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedCategory = newValue!;
+                              });
+                              _applyFilters();
                             },
                           ),
                         ),
@@ -782,7 +851,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                         setState(() {
                           _searchQuery = '';
                         });
-                        _applySearchFilter();
+                        _applyFilters();
                       },
                     )
                         : null,
@@ -798,7 +867,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                     setState(() {
                       _searchQuery = value;
                     });
-                    _applySearchFilter();
+                    _applyFilters();
                   },
                 ),
               ],
@@ -834,9 +903,7 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _searchQuery.isNotEmpty
-                                ? 'Total for "$_searchQuery"'
-                                : 'Total ${_selectedType}',
+                            _buildFilterDescription(),
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -893,13 +960,12 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                   ),
                   SizedBox(height: 16),
                   Text(
-                    _searchQuery.isNotEmpty
-                        ? 'No results for "$_searchQuery"'
-                        : 'No ${_selectedType.toLowerCase()} found',
+                    _buildEmptyStateMessage(),
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[600],
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -909,21 +975,22 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
                       color: Colors.grey[500],
                     ),
                   ),
-                  if (_searchQuery.isNotEmpty) ...[
+                  if (_searchQuery.isNotEmpty || _selectedCategory != 'All') ...[
                     SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
                         _searchController.clear();
                         setState(() {
                           _searchQuery = '';
+                          _selectedCategory = 'All';
                         });
-                        _applySearchFilter();
+                        _applyFilters();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFFEF4444),
                         foregroundColor: Colors.white,
                       ),
-                      child: Text('Clear Search'),
+                      child: Text('Clear Filters'),
                     ),
                   ],
                 ],
@@ -948,5 +1015,31 @@ class _ViewEditSalariesExpensesScreenState extends State<ViewEditSalariesExpense
         tooltip: 'Refresh',
       ),
     );
+  }
+
+  // Helper method to build filter description for total summary
+  String _buildFilterDescription() {
+    if (_searchQuery.isNotEmpty && _selectedCategory != 'All') {
+      return 'Filtered Total';
+    } else if (_searchQuery.isNotEmpty) {
+      return 'Search Results';
+    } else if (_selectedCategory != 'All') {
+      return '$_selectedCategory Total';
+    } else {
+      return 'Total ${_selectedType}';
+    }
+  }
+
+  // Helper method to build empty state message
+  String _buildEmptyStateMessage() {
+    if (_searchQuery.isNotEmpty && _selectedCategory != 'All') {
+      return 'No matches found';
+    } else if (_searchQuery.isNotEmpty) {
+      return 'No search results';
+    } else if (_selectedCategory != 'All') {
+      return 'No $_selectedCategory found';
+    } else {
+      return 'No ${_selectedType.toLowerCase()} found';
+    }
   }
 }
