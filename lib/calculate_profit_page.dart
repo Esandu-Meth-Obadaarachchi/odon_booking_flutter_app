@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'api_service.dart';
+import 'ai_insights_page.dart'; // Import the new AI insights page
 
 class CalculateProfitPage extends StatefulWidget {
   @override
@@ -132,6 +133,29 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
         _fetchAllDataForMonth(selectedMonth);
       }
     });
+  }
+
+  void _navigateToAIInsights() {
+    // Ensure we pass valid data to AI insights
+    final safeBookings = _bookingsForSelectedMonth.isNotEmpty ? _bookingsForSelectedMonth : <Map<String, dynamic>>[];
+    final safeExpenses = _expensesForSelectedMonth.isNotEmpty ? _expensesForSelectedMonth : <Map<String, dynamic>>[];
+    final safeSalaries = _salariesForSelectedMonth.isNotEmpty ? _salariesForSelectedMonth : <Map<String, dynamic>>[];
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AiInsightsPage(
+          selectedMonth: _selectedMonth,
+          totalRevenue: totalRevenue,
+          totalExpenses: totalExpenses,
+          totalSalaries: totalSalaries,
+          totalProfit: totalProfit,
+          bookings: safeBookings,
+          expenses: safeExpenses,
+          salaries: safeSalaries,
+        ),
+      ),
+    );
   }
 
   @override
@@ -273,6 +297,32 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // AI Insights Button - NEW ADDITION
+            Container(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _navigateToAIInsights,
+                icon: Icon(Icons.psychology, size: 24),
+                label: Text(
+                  "🤖 Get AI Business Insights",
+                  style: GoogleFonts.montserrat(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 3,
+                ),
               ),
             ),
             const SizedBox(height: 24),

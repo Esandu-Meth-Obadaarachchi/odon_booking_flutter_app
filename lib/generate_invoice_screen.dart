@@ -282,11 +282,9 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
           _checkInDate = picked;
           _checkInController.text = DateFormat('yyyy-MM-dd').format(picked);
 
-          // If check-out date is before new check-in date, update it
-          if (_checkOutDate != null && _checkOutDate!.isBefore(_checkInDate!)) {
-            _checkOutDate = _checkInDate!.add(Duration(days: 1));
-            _checkOutController.text = DateFormat('yyyy-MM-dd').format(_checkOutDate!);
-          }
+          // Automatically set check-out date to the next day
+          _checkOutDate = _checkInDate!.add(Duration(days: 1));
+          _checkOutController.text = DateFormat('yyyy-MM-dd').format(_checkOutDate!);
         } else {
           _checkOutDate = picked;
           _checkOutController.text = DateFormat('yyyy-MM-dd').format(picked);
