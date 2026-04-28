@@ -20,8 +20,13 @@ mongoose.connect(dbURI)
   .catch(err => console.log(err));
 
 const bookingSchema = new mongoose.Schema({
-  roomNumber: String,
-  roomType: String,
+  roomNumber: String,   // legacy field (single-room bookings)
+  roomType: String,     // legacy field (single-room bookings)
+  rooms: [{             // new: one entry per room in the booking
+    roomNumber: String,
+    roomType: String,
+    pax: Number,
+  }],
   package: String,
   extraDetails: String,
   checkIn: Date,
@@ -30,11 +35,67 @@ const bookingSchema = new mongoose.Schema({
   total: String,
   advance: String,
   balanceMethod: String,
-  guestName: String,      // ← NEW
-  guestPhone: String,     // ← NEW
+  guestName: String,
+  guestPhone: String,
+  mealStart: String,  // 'Lunch' or 'Dinner' — first meal on arrival day for FB/HB
+  needDriver: { type: Boolean, default: false },
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
+
+// RoomConfig Schema — single document, all rooms for the hotel
+const roomConfigSchema = new mongoose.Schema({
+  rooms: [{
+    roomNumber: { type: String, required: true },
+    baseType: { type: String, enum: ['Family', 'Double'], required: true },
+    floor: { type: String, enum: ['Ground', 'Upper'], required: true },
+    isBlocked: { type: Boolean, default: false },
+  }],
+});
+
+const RoomConfig = mongoose.model('RoomConfig', roomConfigSchema);
+
+const defaultRooms = [
+  { roomNumber: '1',   baseType: 'Family', floor: 'Ground', isBlocked: false },
+  { roomNumber: '2',   baseType: 'Double', floor: 'Ground', isBlocked: false },
+  { roomNumber: '3',   baseType: 'Double', floor: 'Ground', isBlocked: false },
+  { roomNumber: '4',   baseType: 'Double', floor: 'Ground', isBlocked: true  },
+  { roomNumber: '5',   baseType: 'Family', floor: 'Ground', isBlocked: false },
+  { roomNumber: '101', baseType: 'Family', floor: 'Upper',  isBlocked: false },
+  { roomNumber: '102', baseType: 'Double', floor: 'Upper',  isBlocked: false },
+  { roomNumber: '103', baseType: 'Double', floor: 'Upper',  isBlocked: false },
+  { roomNumber: '104', baseType: 'Double', floor: 'Upper',  isBlocked: false },
+  { roomNumber: '105', baseType: 'Double', floor: 'Upper',  isBlocked: false },
+  { roomNumber: '106', baseType: 'Double', floor: 'Upper',  isBlocked: false },
+  { roomNumber: '107', baseType: 'Family', floor: 'Upper',  isBlocked: false },
+];
+
+app.get('/room-config', async (req, res) => {
+  try {
+    let config = await RoomConfig.findOne();
+    if (!config) {
+      config = await RoomConfig.create({ rooms: defaultRooms });
+    }
+    res.json(config);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put('/room-config', async (req, res) => {
+  try {
+    let config = await RoomConfig.findOne();
+    if (!config) {
+      config = new RoomConfig({ rooms: req.body.rooms });
+    } else {
+      config.rooms = req.body.rooms;
+    }
+    const saved = await config.save();
+    res.json(saved);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 
 // Routes
 app.get('/bookings', async (req, res) => {
@@ -72,20 +133,23 @@ app.post('/bookings', async (req, res) => {
   const booking = new Booking({
     roomNumber: req.body.roomNumber,
     roomType: req.body.roomType,
+    rooms: req.body.rooms || [],
     package: req.body.package,
     extraDetails: req.body.extraDetails,
-    checkIn: req.body.checkIn, // Save check-in date
-    checkOut: req.body.checkOut, // Save check-out date
-    num_of_nights: req.body.num_of_nights, // Save number of nights
-    total : req.body.total,
-    advance : req.body.advance,
+    checkIn: req.body.checkIn,
+    checkOut: req.body.checkOut,
+    num_of_nights: req.body.num_of_nights,
+    total: req.body.total,
+    advance: req.body.advance,
     balanceMethod: req.body.balanceMethod,
     guestName: req.body.guestName,
     guestPhone: req.body.guestPhone,
-
+    mealStart: req.body.mealStart,
+    needDriver: req.body.needDriver ?? false,
   });
 
   try {
+    console.log('POST /bookings needDriver:', req.body.needDriver, '→', booking.needDriver);
     const newBooking = await booking.save();
     res.status(201).json(newBooking);
   } catch (err) {
@@ -108,23 +172,28 @@ app.put('/bookings/:id', async (req, res) => {
     const updateData = {
       roomNumber: req.body.roomNumber,
       roomType: req.body.roomType,
+      rooms: req.body.rooms,
       package: req.body.package,
       extraDetails: req.body.extraDetails,
       checkIn: req.body.checkIn,
       checkOut: req.body.checkOut,
-      ...(num_of_nights !== undefined && { num_of_nights }), // Add num_of_nights if calculated
-      total : req.body.total,
-      advance : req.body.advance,
-      balanceMethod : req.body.balanceMethod,
+      ...(num_of_nights !== undefined && { num_of_nights }),
+      total: req.body.total,
+      advance: req.body.advance,
+      balanceMethod: req.body.balanceMethod,
       guestName: req.body.guestName,
       guestPhone: req.body.guestPhone,
+      mealStart: req.body.mealStart,
+      needDriver: req.body.needDriver ?? false,
     };
+
+    console.log('PUT /bookings needDriver:', req.body.needDriver, '→', updateData.needDriver);
 
     // Update booking
     const updatedBooking = await Booking.findOneAndUpdate(
       { _id: req.params.id },
-      updateData,
-      { new: true } // Return the updated document
+      { $set: updateData },
+      { new: true }
     );
 
     if (!updatedBooking) {

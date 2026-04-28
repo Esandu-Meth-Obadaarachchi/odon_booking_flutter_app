@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Switch back to Railway URL after rehosting the backend
-  //final String baseUrl = 'http://192.168.1.7:3000';
+  //final String baseUrl = 'http://192.168.1.26:3000';
   final String baseUrl = 'https://odonbookingflutterapp-production.up.railway.app';
   // Android emulator: use http://10.0.2.2:3000
   // Physical device: use your machine's local IP, e.g. http://192.168.1.26:3000
@@ -288,6 +288,28 @@ class ApiService {
     }
   }
 
+
+  // ROOM CONFIG METHODS
+
+  Future<Map<String, dynamic>> fetchRoomConfig() async {
+    final response = await http.get(Uri.parse('$baseUrl/room-config'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch room config: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> updateRoomConfig(List<Map<String, dynamic>> rooms) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/room-config'),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({'rooms': rooms}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update room config: ${response.reasonPhrase}');
+    }
+  }
 
   // PRICE CONFIG METHODS
 

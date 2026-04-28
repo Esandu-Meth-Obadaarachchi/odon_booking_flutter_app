@@ -118,7 +118,7 @@ class _PastBookingsScreenState extends State<PastBookingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Room ${booking['roomNumber'] ?? 'N/A'}',
+                            _roomDisplay(booking),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -140,7 +140,7 @@ class _PastBookingsScreenState extends State<PastBookingsScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Type: ${booking['roomType'] ?? 'N/A'}, Package: ${booking['package'] ?? 'N/A'}',
+                            'Type: ${_typeDisplay(booking)}, Package: ${booking['package'] ?? 'N/A'}',
                             style: TextStyle(fontSize: 14, color: Colors.black54),
                           ),
                           Text(
@@ -158,6 +158,24 @@ class _PastBookingsScreenState extends State<PastBookingsScreen> {
         ),
       ),
     );
+  }
+
+  String _roomDisplay(Map<String, dynamic> booking) {
+    if (booking['rooms'] != null && (booking['rooms'] as List).isNotEmpty) {
+      return (booking['rooms'] as List)
+          .map((r) => '${r['roomNumber'].toString().padLeft(3, '0')} (${r['roomType']})')
+          .join(', ');
+    }
+    return 'Room ${booking['roomNumber'] ?? 'N/A'}';
+  }
+
+  String _typeDisplay(Map<String, dynamic> booking) {
+    if (booking['rooms'] != null && (booking['rooms'] as List).isNotEmpty) {
+      return (booking['rooms'] as List)
+          .map((r) => '${r['roomNumber'].toString().padLeft(3, '0')}: ${r['roomType']}')
+          .join(' | ');
+    }
+    return booking['roomType'] ?? 'N/A';
   }
 
   // Utility to format DateTime as 'DD/MM/YYYY'
