@@ -6,8 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 class ImageProcessorService {
-  static const String _geminiApiKey = 'AIzaSyBV9XpOU9ndyZFLuGfwMr6b3kx3Cst2NSo'; // Replace with your actual API key
-  static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  static const String _geminiApiKey = 'AIzaSyCWTsQuUv6XLDBULMNBUvKKqpDqlyKrL8A'; // Replace with your actual API key
+  static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
   final ImagePicker _picker = ImagePicker();
 
@@ -129,10 +129,10 @@ class ImageProcessorService {
           }
         ],
         'generationConfig': {
-          'temperature': 0.05, // Very low temperature for more consistent output
-          'topK': 1,
-          'topP': 0.8,
-          'maxOutputTokens': 8192, // Increased for more data
+          'temperature': 0.2,
+          'topK': 40,
+          'topP': 0.95,
+          'maxOutputTokens': 8192,
         }
       };
 
@@ -176,7 +176,7 @@ class ImageProcessorService {
   String _getEnhancedPrompt() {
     final currentYear = DateTime.now().year;
     return '''
-IMPORTANT: Analyze this financial ledger/document image very carefully and extract ALL data with maximum accuracy.
+IMPORTANT: Analyze this financial ledger/document image very carefully and extract EVERY SINGLE entry — do NOT stop early, do NOT summarize, do NOT skip rows. You must output ALL items found in the image.
 
 CRITICAL DATE EXTRACTION RULES:
 - Look for dates on the LEFT SIDE of each row/line
@@ -225,8 +225,9 @@ QUALITY CONTROL:
 - Double-check date extraction - this is CRITICAL
 - Ignore entries that are unclear or ambiguous
 - Return empty array [] if no clear data found
+- YOU MUST include every row — if the image has 10 rows, return 10 items; if it has 20, return 20
 
-Return ONLY the JSON array, no explanations or additional text.
+Return ONLY the JSON array, no explanations or additional text. Do not truncate the output.
 ''';
   }
 
