@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'api_service.dart';
+import 'package:odon_booking/core/api/api_service.dart';
 
 class EditInventoryItemScreen extends StatefulWidget {
   final Map<String, dynamic> item;

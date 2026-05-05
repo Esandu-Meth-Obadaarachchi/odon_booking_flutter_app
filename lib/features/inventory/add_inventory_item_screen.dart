@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:odon_booking/home_screen.dart';
-import 'api_service.dart';
+import 'package:odon_booking/features/home/home_screen.dart';
+import 'package:odon_booking/core/api/api_service.dart';
 import "edit_inventory_item_screen.dart";
 class AddInventoryItemScreen extends StatefulWidget {
   @override
