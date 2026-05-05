@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'api_service.dart';
+import 'package:odon_booking/core/api/api_service.dart';
 
 class ViewEditSalariesExpensesScreen extends StatefulWidget {
   @override

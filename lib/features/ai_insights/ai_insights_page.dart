@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import './models/ai_insights_service.dart';
+import 'ai_insights_service.dart';
 
 class AiInsightsPage extends StatefulWidget {
   final DateTime selectedMonth;
