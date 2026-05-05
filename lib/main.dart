@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
-import 'home_screen.dart';
+import 'features/home/home_screen.dart';
 
 // Add this global navigator key for image processing
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

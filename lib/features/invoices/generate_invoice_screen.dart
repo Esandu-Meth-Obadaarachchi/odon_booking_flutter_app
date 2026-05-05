@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'invoice.dart' as invoice;
 import 'invoice.dart';
-import 'api_service.dart';
-import 'price_settings_screen.dart';
+import 'package:odon_booking/core/api/api_service.dart';
+import 'package:odon_booking/features/financials/price_settings_screen.dart';
 class Room {
   String type;
   int quantity;

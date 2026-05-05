@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'api_service.dart';
+import 'package:odon_booking/core/api/api_service.dart';
 import 'edit_booking_screen.dart';
 import 'future_bookings_screen.dart';
 import 'past_bookings_screen.dart';

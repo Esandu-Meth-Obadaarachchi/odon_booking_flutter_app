@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'api_service.dart';
+import 'package:odon_booking/core/api/api_service.dart';
 
 class EditBookingScreen extends StatefulWidget {
   final Map<String, dynamic> booking;

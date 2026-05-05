@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'api_service.dart';
-import 'room_selection_screen.dart';
-import 'room_config_screen.dart';
-import 'view_bookings_screen.dart';
-import 'login_screen.dart';
-import ' add_inventory_item_screen.dart';
-import 'calculate_profit_page.dart';
-import 'generate_invoice_screen.dart';
-import 'expenses_screen.dart';
+import 'package:odon_booking/core/api/api_service.dart';
+import 'package:odon_booking/features/bookings/room_selection_screen.dart';
+import 'package:odon_booking/features/rooms/room_config_screen.dart';
+import 'package:odon_booking/features/bookings/view_bookings_screen.dart';
+import 'package:odon_booking/features/auth/login_screen.dart';
+import 'package:odon_booking/features/inventory/add_inventory_item_screen.dart';
+import 'package:odon_booking/features/financials/calculate_profit_page.dart';
+import 'package:odon_booking/features/invoices/generate_invoice_screen.dart';
+import 'package:odon_booking/features/financials/expenses_screen.dart';
 
 // ── Package meta ──────────────────────────────────────────────────────────────
 

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// Import your API service file
-import 'api_service.dart';
+import 'package:odon_booking/core/api/api_service.dart';
 import 'ViewEditSalariesExpensesScreen.dart';
-import 'image_processor_service.dart';
-import 'data_confirmation_dialog.dart';
+import 'package:odon_booking/shared/services/image_processor_service.dart';
+import 'package:odon_booking/shared/widgets/data_confirmation_dialog.dart';
 
 class ExpensesAndSalaryScreen extends StatefulWidget {
   @override
