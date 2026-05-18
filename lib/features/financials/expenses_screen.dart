@@ -29,64 +29,66 @@ class _ExpensesAndSalaryScreenState extends State<ExpensesAndSalaryScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
-        title: Text(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF312E81), Color(0xFF4F46E5)],
+            ),
+          ),
+        ),
+        title: const Text(
           'Expenses & Salaries',
           style: TextStyle(
+            fontFamily: 'Outfit',
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
-        backgroundColor: Color(0xFFEF4444),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: Icon(Icons.visibility, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ViewEditSalariesExpensesScreen(),
-                ),
-              );
-            },
+            icon: const Icon(Icons.list_alt_rounded, color: Colors.white),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ViewEditSalariesExpensesScreen()),
+            ),
             tooltip: 'View Records',
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
+          unselectedLabelColor: Colors.white60,
           indicatorColor: Colors.white,
           indicatorWeight: 3,
-          labelStyle: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+          labelStyle: const TextStyle(
+            fontFamily: 'Outfit',
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
           ),
-          tabs: [
-            Tab(
-              icon: Icon(Icons.people),
-              text: 'Salaries',
-            ),
-            Tab(
-              icon: Icon(Icons.receipt_long),
-              text: 'Expenses',
-            ),
+          tabs: const [
+            Tab(icon: Icon(Icons.people_alt_rounded), text: 'Salaries'),
+            Tab(icon: Icon(Icons.receipt_long_rounded), text: 'Expenses'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          SalaryTab(),
-          ExpensesTab(),
-        ],
+        children: [SalaryTab(), ExpensesTab()],
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SALARY TAB
+// ─────────────────────────────────────────────────────────────────────────────
 
 class SalaryTab extends StatefulWidget {
   @override
@@ -99,7 +101,6 @@ class _SalaryTabState extends State<SalaryTab> {
   final _amountController = TextEditingController();
   String _selectedType = 'OT';
 
-  // Date selection variables
   String _selectedMonth = DateTime.now().month.toString();
   String _selectedYear = DateTime.now().year.toString();
   int _selectedDay = DateTime.now().day;
@@ -108,171 +109,100 @@ class _SalaryTabState extends State<SalaryTab> {
   final ApiService _apiService = ApiService();
   final ImageProcessorService _imageProcessor = ImageProcessorService();
 
-  final List<String> _months = [
-    '1', '2', '3', '4', '5', '6',
-    '7', '8', '9', '10', '11', '12'
-  ];
-
+  final List<String> _months = ['1','2','3','4','5','6','7','8','9','10','11','12'];
   final List<String> _monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December',
   ];
+  final List<String> _years = ['2023','2024','2025','2026','2027'];
 
-  final List<String> _years = [
-    '2023', '2024', '2025', '2026', '2027'
-  ];
-
-  // Get days for selected month/year
   List<int> get _daysInMonth {
     final month = int.parse(_selectedMonth);
-    final year = int.parse(_selectedYear);
-    final daysInMonth = DateTime(year, month + 1, 0).day;
-    return List.generate(daysInMonth, (index) => index + 1);
+    final year  = int.parse(_selectedYear);
+    return List.generate(DateTime(year, month + 1, 0).day, (i) => i + 1);
   }
 
-  // Ensure selected day is valid for the month
   void _validateSelectedDay() {
     final maxDays = _daysInMonth.length;
-    if (_selectedDay > maxDays) {
-      _selectedDay = maxDays;
-    }
+    if (_selectedDay > maxDays) _selectedDay = maxDays;
   }
 
-  DateTime get _selectedDate {
-    return DateTime(
-      int.parse(_selectedYear),
-      int.parse(_selectedMonth),
-      _selectedDay,
-    );
-  }
+  DateTime get _selectedDate =>
+      DateTime(int.parse(_selectedYear), int.parse(_selectedMonth), _selectedDay);
 
   void _submitSalary() async {
     if (_formKey.currentState!.validate()) {
       try {
-        final salaryData = {
+        await _apiService.addSalary({
           'employeeName': _nameController.text,
           'salaryType': _selectedType,
           'amount': double.parse(_amountController.text),
           'date': _selectedDate.toIso8601String(),
-        };
-
-        await _apiService.addSalary(salaryData);
-
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Salary record added successfully!'),
-            backgroundColor: Colors.green,
+            content: const Text('Salary record added'),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         _clearForm();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
 
   Future<void> _saveBatchSalaries(List<Map<String, dynamic>> salaries) async {
-    try {
-      for (var salary in salaries) {
-        await _apiService.addSalary(salary);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving salaries: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      rethrow;
-    }
+    for (var s in salaries) await _apiService.addSalary(s);
   }
 
   Future<void> _saveBatchExpenses(List<Map<String, dynamic>> expenses) async {
-    try {
-      for (var expense in expenses) {
-        await _apiService.addExpense(expense);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving expenses: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      rethrow;
-    }
+    for (var e in expenses) await _apiService.addExpense(e);
   }
 
   void _processImageWithAI() async {
     try {
       final extractedData = await _imageProcessor.processImage(context);
-
       if (extractedData.isNotEmpty) {
         final result = await showDialog<Map<String, dynamic>>(
           context: context,
-          builder: (context) => DataConfirmationDialog(
-            data: extractedData,
-          ),
+          builder: (_) => DataConfirmationDialog(data: extractedData),
         );
-
         if (result != null) {
-          final salaryData = result['salaryData'] as List<Map<String, dynamic>>? ?? [];
+          final salaryData  = result['salaryData']  as List<Map<String, dynamic>>? ?? [];
           final expenseData = result['expenseData'] as List<Map<String, dynamic>>? ?? [];
-
-          int savedSalaries = 0;
-          int savedExpenses = 0;
-
-          if (salaryData.isNotEmpty) {
-            await _saveBatchSalaries(salaryData);
-            savedSalaries = salaryData.length;
-          }
-
-          if (expenseData.isNotEmpty) {
-            await _saveBatchExpenses(expenseData);
-            savedExpenses = expenseData.length;
-          }
-
-          if (savedSalaries > 0 || savedExpenses > 0) {
-            String message = 'Successfully added ';
-            if (savedSalaries > 0 && savedExpenses > 0) {
-              message += '$savedSalaries salary entries and $savedExpenses expense entries';
-            } else if (savedSalaries > 0) {
-              message += '$savedSalaries salary entries';
-            } else {
-              message += '$savedExpenses expense entries';
-            }
-
+          if (salaryData.isNotEmpty)  await _saveBatchSalaries(salaryData);
+          if (expenseData.isNotEmpty) await _saveBatchExpenses(expenseData);
+          if (salaryData.isNotEmpty || expenseData.isNotEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(message),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 4),
+                content: Text(
+                  'Added ${salaryData.length} salary + ${expenseData.length} expense entries',
+                ),
+                backgroundColor: Colors.green.shade600,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
               ),
             );
           }
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No financial data found in the image. Please try with a clearer image containing expense or salary information.'),
+          const SnackBar(
+            content: Text('No financial data found in the image'),
             backgroundColor: Colors.orange,
-            duration: Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } catch (e) {
-      print('Error in _processImageWithAI: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error processing image: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
+        SnackBar(content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red),
       );
     }
   }
@@ -281,304 +211,121 @@ class _SalaryTabState extends State<SalaryTab> {
     _nameController.clear();
     _amountController.clear();
     setState(() {
-      _selectedType = 'OT';
+      _selectedType  = 'OT';
       _selectedMonth = DateTime.now().month.toString();
-      _selectedYear = DateTime.now().year.toString();
-      _selectedDay = DateTime.now().day;
+      _selectedYear  = DateTime.now().year.toString();
+      _selectedDay   = DateTime.now().day;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Camera Button Card
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Icon(Icons.camera_alt, color: Color(0xFFEF4444), size: 24),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Scan salary table from image',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _processImageWithAI,
-                    icon: Icon(Icons.camera_alt, size: 20),
-                    label: Text('Scan'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFEF4444),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
+          // Scan banner
+          _ScanBanner(onScan: _processImageWithAI, label: 'Scan salary sheet from photo'),
+          const SizedBox(height: 20),
 
-          // Manual Entry Card
+          // Section label
+          _sectionLabel('Add Salary Record'),
+          const SizedBox(height: 10),
+
+          // Form card
           Card(
-            elevation: 2,
+            elevation: 0,
+            color: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(color: Colors.grey.shade200),
             ),
             child: Padding(
-              padding: EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Add Salary Record Manually',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
+                    // Date row
+                    _DateSelector(
+                      months: _months,
+                      monthNames: _monthNames,
+                      years: _years,
+                      selectedMonth: _selectedMonth,
+                      selectedYear: _selectedYear,
+                      selectedDay: _selectedDay,
+                      daysInMonth: _daysInMonth,
+                      onMonthChanged: (v) => setState(() {
+                        _selectedMonth = v!;
+                        _validateSelectedDay();
+                      }),
+                      onYearChanged: (v) => setState(() {
+                        _selectedYear = v!;
+                        _validateSelectedDay();
+                      }),
+                      onDayChanged: (v) => setState(() => _selectedDay = v!),
+                      selectedDate: _selectedDate,
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-                    // Date Selection Section
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.calendar_today, color: Color(0xFFEF4444), size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Select Date',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          // Month Dropdown - Full width
-                          DropdownButtonFormField<String>(
-                            value: _selectedMonth,
-                            decoration: InputDecoration(
-                              labelText: 'Month',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            items: _months.map((String month) {
-                              return DropdownMenuItem<String>(
-                                value: month,
-                                child: Text(_monthNames[int.parse(month) - 1]),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedMonth = newValue!;
-                                _validateSelectedDay();
-                              });
-                            },
-                          ),
-                          SizedBox(height: 8),
-                          // Year and Day in a row with more space
-                          Row(
-                            children: [
-                              // Year Dropdown
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedYear,
-                                  decoration: InputDecoration(
-                                    labelText: 'Year',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  ),
-                                  items: _years.map((String year) {
-                                    return DropdownMenuItem<String>(
-                                      value: year,
-                                      child: Text(year),
-                                    );
-                                  }).toList(),
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      _selectedYear = newValue!;
-                                      _validateSelectedDay();
-                                    });
-                                  },
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              // Day Dropdown
-                              Expanded(
-                                child: DropdownButtonFormField<int>(
-                                  value: _selectedDay,
-                                  decoration: InputDecoration(
-                                    labelText: 'Day',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  ),
-                                  items: _daysInMonth.map((int day) {
-                                    return DropdownMenuItem<int>(
-                                      value: day,
-                                      child: Text(day.toString()),
-                                    );
-                                  }).toList(),
-                                  onChanged: (int? newValue) {
-                                    setState(() {
-                                      _selectedDay = newValue!;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Selected: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFFEF4444),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 16),
-
-                    // Employee Name Field
-                    TextFormField(
+                    // Employee name
+                    _indigoField(
                       controller: _nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Employee Name',
-                        hintText: 'Enter employee name',
-                        prefixIcon: Icon(Icons.person, color: Color(0xFFEF4444)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Color(0xFFEF4444), width: 2),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter employee name';
-                        }
-                        return null;
-                      },
+                      label: 'Employee Name',
+                      icon: Icons.person_outline_rounded,
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Enter employee name' : null,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Salary Type Dropdown
+                    // Type dropdown
                     DropdownButtonFormField<String>(
                       value: _selectedType,
-                      decoration: InputDecoration(
-                        labelText: 'Salary Type',
-                        prefixIcon: Icon(Icons.category, color: Color(0xFFEF4444)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Color(0xFFEF4444), width: 2),
-                        ),
-                      ),
-                      items: _salaryTypes.map((String type) {
-                        return DropdownMenuItem<String>(
-                          value: type,
-                          child: Text(type),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedType = newValue!;
-                        });
-                      },
+                      decoration: _indigoDecoration('Salary Type', Icons.category_outlined),
+                      items: _salaryTypes
+                          .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedType = v!),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Amount Field
-                    TextFormField(
+                    // Amount
+                    _indigoField(
                       controller: _amountController,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                      ],
-                      decoration: InputDecoration(
-                        labelText: 'Amount',
-                        hintText: 'Enter amount',
-                        prefixIcon: Icon(Icons.attach_money, color: Color(0xFFEF4444)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Color(0xFFEF4444), width: 2),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter amount';
-                        }
-                        if (double.tryParse(value) == null) {
-                          return 'Please enter a valid amount';
-                        }
+                      label: 'Amount (LKR)',
+                      icon: Icons.payments_outlined,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Enter amount';
+                        if (double.tryParse(v) == null) return 'Invalid amount';
                         return null;
                       },
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 22),
 
-                    // Submit Button
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _submitSalary,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFFEF4444),
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 2,
-                            ),
-                            child: Text(
-                              'Add Salary Record',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _submitSalary,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text(
+                          'Add Salary Record',
+                          style: TextStyle(
+                            fontFamily: 'Outfit',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -591,6 +338,10 @@ class _SalaryTabState extends State<SalaryTab> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPENSES TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
 class ExpensesTab extends StatefulWidget {
   @override
   _ExpensesTabState createState() => _ExpensesTabState();
@@ -598,29 +349,21 @@ class ExpensesTab extends StatefulWidget {
 
 class _ExpensesTabState extends State<ExpensesTab> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _amountController = TextEditingController();
-  final _reasonController = TextEditingController();
-  String _selectedCategory = 'Food';
-  DateTime _selectedDate = DateTime.now();
+  final _nameController     = TextEditingController();
+  final _amountController   = TextEditingController();
+  final _reasonController   = TextEditingController();
+  String _selectedCategory  = 'Food';
+  DateTime _selectedDate    = DateTime.now();
   final ApiService _apiService = ApiService();
   final ImageProcessorService _imageProcessor = ImageProcessorService();
 
-  // Autocomplete related variables
   List<String> _expenseNameSuggestions = [];
-  bool _showSuggestions = false;
-  FocusNode _nameFieldFocusNode = FocusNode();
+  final FocusNode _nameFieldFocusNode = FocusNode();
   OverlayEntry? _overlayEntry;
 
   final List<String> _expenseCategories = [
-    'Food',
-    'Utilities',
-    'Maintenance',
-    'Supplies',
-    'Transportation',
-    'Marketing',
-    'Equipment',
-    'Other',
+    'Food','Utilities','Maintenance','Supplies',
+    'Transportation','Marketing','Equipment','Other',
   ];
 
   @override
@@ -643,36 +386,28 @@ class _ExpensesTabState extends State<ExpensesTab> {
     super.dispose();
   }
 
-  // Load all expense names from the API
   Future<void> _loadExpenseNames() async {
     try {
       final expenses = await _apiService.fetchExpenses();
       final uniqueNames = <String>{};
-
-      for (var expense in expenses) {
-        if (expense['expenseName'] != null && expense['expenseName'].toString().trim().isNotEmpty) {
-          uniqueNames.add(expense['expenseName'].toString().trim());
+      for (var e in expenses) {
+        if (e['expenseName'] != null && e['expenseName'].toString().trim().isNotEmpty) {
+          uniqueNames.add(e['expenseName'].toString().trim());
         }
       }
-
-      setState(() {
-        _expenseNameSuggestions = uniqueNames.toList()..sort();
-      });
-    } catch (e) {
-      print('Error loading expense names: $e');
-    }
+      setState(() => _expenseNameSuggestions = uniqueNames.toList()..sort());
+    } catch (_) {}
   }
 
   void _onNameFieldChanged() {
     final query = _nameController.text.toLowerCase();
     if (query.isNotEmpty && _nameFieldFocusNode.hasFocus) {
-      final filteredSuggestions = _expenseNameSuggestions
-          .where((name) => name.toLowerCase().contains(query))
-          .take(5) // Limit to 5 suggestions
+      final filtered = _expenseNameSuggestions
+          .where((n) => n.toLowerCase().contains(query))
+          .take(5)
           .toList();
-
-      if (filteredSuggestions.isNotEmpty) {
-        _showSuggestionsOverlay(filteredSuggestions);
+      if (filtered.isNotEmpty) {
+        _showSuggestionsOverlay(filtered);
       } else {
         _removeOverlay();
       }
@@ -683,76 +418,63 @@ class _ExpensesTabState extends State<ExpensesTab> {
 
   void _onFocusChanged() {
     if (!_nameFieldFocusNode.hasFocus) {
-      // Delay removal to allow for tap on suggestions
-      Future.delayed(Duration(milliseconds: 150), () {
-        _removeOverlay();
-      });
+      Future.delayed(const Duration(milliseconds: 150), _removeOverlay);
     } else if (_nameController.text.isNotEmpty) {
-      _onNameFieldChanged(); // Show suggestions when field gains focus
+      _onNameFieldChanged();
     }
   }
 
   void _showSuggestionsOverlay(List<String> suggestions) {
-    _removeOverlay(); // Remove any existing overlay
-
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final RenderBox? overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
-
+    _removeOverlay();
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
-
-    // Find the text field's position
-    final textFieldRenderBox = _getTextFieldRenderBox();
-    if (textFieldRenderBox == null) return;
-
-    final position = textFieldRenderBox.localToGlobal(Offset.zero, ancestor: overlay);
-    final size = textFieldRenderBox.size;
+    final ctx = _nameFieldFocusNode.context;
+    if (ctx == null) return;
+    final rb  = ctx.findRenderObject() as RenderBox?;
+    if (rb == null) return;
+    final pos  = rb.localToGlobal(Offset.zero, ancestor: overlay);
+    final size = rb.size;
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        left: position.dx,
-        top: position.dy + size.height + 4,
+      builder: (_) => Positioned(
+        left: pos.dx,
+        top: pos.dy + size.height + 4,
         width: size.width,
         child: Material(
           elevation: 4,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           child: Container(
-            constraints: BoxConstraints(maxHeight: 200),
+            constraints: const BoxConstraints(maxHeight: 200),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade200),
             ),
             child: ListView.builder(
               shrinkWrap: true,
               padding: EdgeInsets.zero,
               itemCount: suggestions.length,
-              itemBuilder: (context, index) {
-                final suggestion = suggestions[index];
+              itemBuilder: (_, index) {
+                final s = suggestions[index];
                 return InkWell(
                   onTap: () {
-                    _nameController.text = suggestion;
+                    _nameController.text = s;
                     _nameController.selection = TextSelection.fromPosition(
-                      TextPosition(offset: suggestion.length),
-                    );
+                        TextPosition(offset: s.length));
                     _removeOverlay();
                   },
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       border: index < suggestions.length - 1
-                          ? Border(bottom: BorderSide(color: Colors.grey[200]!))
+                          ? Border(bottom: BorderSide(color: Colors.grey.shade100))
                           : null,
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.history, size: 16, color: Colors.grey[600]),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            suggestion,
-                            style: TextStyle(fontSize: 14),
-                          ),
-                        ),
+                        Icon(Icons.history, size: 16, color: Colors.grey.shade500),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(s, style: const TextStyle(fontSize: 14))),
                       ],
                     ),
                   ),
@@ -763,18 +485,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
         ),
       ),
     );
-
     Overlay.of(context).insert(_overlayEntry!);
-  }
-
-  RenderBox? _getTextFieldRenderBox() {
-    // This method attempts to find the render box of the name text field
-    // Since we can't directly access it, we'll use the focus node's context
-    final context = _nameFieldFocusNode.context;
-    if (context != null) {
-      return context.findRenderObject() as RenderBox?;
-    }
-    return null;
   }
 
   void _removeOverlay() {
@@ -785,138 +496,80 @@ class _ExpensesTabState extends State<ExpensesTab> {
   void _submitExpense() async {
     if (_formKey.currentState!.validate()) {
       try {
-        final expenseData = {
+        await _apiService.addExpense({
           'expenseName': _nameController.text,
           'category': _selectedCategory,
           'amount': double.parse(_amountController.text),
           'date': _selectedDate.toIso8601String(),
           'reason': _reasonController.text,
-        };
-
-        await _apiService.addExpense(expenseData);
-
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Expense record added successfully!'),
-            backgroundColor: Colors.green,
+            content: const Text('Expense record added'),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-
-        // Reload expense names to include the new one
         _loadExpenseNames();
         _clearForm();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
+  }
+
+  Future<void> _saveBatchSalaries(List<Map<String, dynamic>> salaries) async {
+    for (var s in salaries) await _apiService.addSalary(s);
+  }
+
+  Future<void> _saveBatchExpenses(List<Map<String, dynamic>> expenses) async {
+    for (var e in expenses) await _apiService.addExpense(e);
   }
 
   void _processImageWithAI() async {
     try {
       final extractedData = await _imageProcessor.processImage(context);
-
       if (extractedData.isNotEmpty) {
         final result = await showDialog<Map<String, dynamic>>(
           context: context,
-          builder: (context) => DataConfirmationDialog(
-            data: extractedData,
-          ),
+          builder: (_) => DataConfirmationDialog(data: extractedData),
         );
-
         if (result != null) {
-          final salaryData = result['salaryData'] as List<Map<String, dynamic>>? ?? [];
+          final salaryData  = result['salaryData']  as List<Map<String, dynamic>>? ?? [];
           final expenseData = result['expenseData'] as List<Map<String, dynamic>>? ?? [];
-
-          int savedSalaries = 0;
-          int savedExpenses = 0;
-
-          if (salaryData.isNotEmpty) {
-            await _saveBatchSalaries(salaryData);
-            savedSalaries = salaryData.length;
-          }
-
-          if (expenseData.isNotEmpty) {
-            await _saveBatchExpenses(expenseData);
-            savedExpenses = expenseData.length;
-          }
-
-          if (savedSalaries > 0 || savedExpenses > 0) {
-            String message = 'Successfully added ';
-            if (savedSalaries > 0 && savedExpenses > 0) {
-              message += '$savedSalaries salary entries and $savedExpenses expense entries';
-            } else if (savedSalaries > 0) {
-              message += '$savedSalaries salary entries';
-            } else {
-              message += '$savedExpenses expense entries';
-            }
-
+          if (salaryData.isNotEmpty)  await _saveBatchSalaries(salaryData);
+          if (expenseData.isNotEmpty) await _saveBatchExpenses(expenseData);
+          if (salaryData.isNotEmpty || expenseData.isNotEmpty) {
+            _loadExpenseNames();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(message),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 4),
+                content: Text(
+                  'Added ${salaryData.length} salary + ${expenseData.length} expense entries',
+                ),
+                backgroundColor: Colors.green.shade600,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
               ),
             );
-
-            // Reload expense names after batch import
-            _loadExpenseNames();
           }
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No financial data found in the image. Please try with a clearer image containing expense or salary information.'),
+          const SnackBar(
+            content: Text('No financial data found in the image'),
             backgroundColor: Colors.orange,
-            duration: Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } catch (e) {
-      print('Error in _processImageWithAI: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error processing image: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
+        SnackBar(content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red),
       );
-    }
-  }
-
-  Future<void> _saveBatchSalaries(List<Map<String, dynamic>> salaries) async {
-    try {
-      for (var salary in salaries) {
-        await _apiService.addSalary(salary);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving salaries: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      rethrow;
-    }
-  }
-
-  Future<void> _saveBatchExpenses(List<Map<String, dynamic>> expenses) async {
-    try {
-      for (var expense in expenses) {
-        await _apiService.addExpense(expense);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving expenses: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      rethrow;
     }
   }
 
@@ -926,268 +579,173 @@ class _ExpensesTabState extends State<ExpensesTab> {
     _reasonController.clear();
     setState(() {
       _selectedCategory = 'Food';
-      _selectedDate = DateTime.now();
+      _selectedDate     = DateTime.now();
     });
     _removeOverlay();
   }
 
   Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Color(0xFFEF4444),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Colors.indigo,
+            onPrimary: Colors.white,
           ),
-          child: child!,
-        );
-      },
+        ),
+        child: child!,
+      ),
     );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Camera Button Card
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Icon(Icons.camera_alt, color: Color(0xFFEF4444), size: 24),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Scan expense table from image',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _processImageWithAI,
-                    icon: Icon(Icons.camera_alt, size: 20),
-                    label: Text('Scan'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFEF4444),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
+          // Scan banner
+          _ScanBanner(onScan: _processImageWithAI, label: 'Scan expense receipt from photo'),
+          const SizedBox(height: 20),
 
-          // Manual Entry Card
+          _sectionLabel('Add Expense Record'),
+          const SizedBox(height: 10),
+
           Card(
-            elevation: 2,
+            elevation: 0,
+            color: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(color: Colors.grey.shade200),
             ),
             child: Padding(
-              padding: EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Add Expense Record Manually',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    SizedBox(height: 24),
-
-                    // Expense Name Field with Autocomplete
+                    // Expense name with autocomplete
                     TextFormField(
                       controller: _nameController,
                       focusNode: _nameFieldFocusNode,
                       decoration: InputDecoration(
                         labelText: 'Expense Name',
-                        hintText: 'Enter expense name (suggestions will appear)',
-                        prefixIcon: Icon(Icons.receipt, color: Color(0xFFEF4444)),
+                        hintText: 'Type to see suggestions',
+                        prefixIcon: Icon(Icons.receipt_outlined, color: Colors.indigo.shade400, size: 20),
                         suffixIcon: _nameController.text.isNotEmpty
                             ? IconButton(
-                          icon: Icon(Icons.clear, size: 20),
-                          onPressed: () {
-                            _nameController.clear();
-                            _removeOverlay();
-                          },
-                        )
-                            : Icon(Icons.search, color: Colors.grey[400]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
+                                icon: Icon(Icons.clear, size: 18, color: Colors.grey.shade400),
+                                onPressed: () {
+                                  _nameController.clear();
+                                  _removeOverlay();
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Color(0xFFEF4444), width: 2),
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Colors.indigo, width: 2),
                         ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter expense name';
-                        }
-                        return null;
-                      },
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Enter expense name' : null,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Category Dropdown
+                    // Category
                     DropdownButtonFormField<String>(
                       value: _selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: 'Category',
-                        prefixIcon: Icon(Icons.category_outlined, color: Color(0xFFEF4444)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Color(0xFFEF4444), width: 2),
-                        ),
-                      ),
-                      items: _expenseCategories.map((String category) {
-                        return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedCategory = newValue!;
-                        });
-                      },
+                      decoration: _indigoDecoration('Category', Icons.label_outline_rounded),
+                      items: _expenseCategories
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedCategory = v!),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Amount Field
-                    TextFormField(
+                    // Amount
+                    _indigoField(
                       controller: _amountController,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                      ],
-                      decoration: InputDecoration(
-                        labelText: 'Amount',
-                        hintText: 'Enter amount',
-                        prefixIcon: Icon(Icons.attach_money, color: Color(0xFFEF4444)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Color(0xFFEF4444), width: 2),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter amount';
-                        }
-                        if (double.tryParse(value) == null) {
-                          return 'Please enter a valid amount';
-                        }
+                      label: 'Amount (LKR)',
+                      icon: Icons.payments_outlined,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Enter amount';
+                        if (double.tryParse(v) == null) return 'Invalid amount';
                         return null;
                       },
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Date Selector
+                    // Date picker
                     GestureDetector(
                       onTap: _selectDate,
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade200),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.calendar_today, color: Color(0xFFEF4444)),
-                            SizedBox(width: 12),
+                            Icon(Icons.calendar_today_outlined, color: Colors.indigo.shade400, size: 20),
+                            const SizedBox(width: 12),
                             Text(
-                              'Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                              style: TextStyle(fontSize: 16),
+                              '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                              style: const TextStyle(fontSize: 15),
                             ),
+                            const Spacer(),
+                            Text('Tap to change', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
                           ],
                         ),
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Reason Field
-                    TextFormField(
+                    // Reason
+                    _indigoField(
                       controller: _reasonController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'Reason/Description',
-                        hintText: 'Enter reason or description (optional)',
-                        prefixIcon: Icon(Icons.notes, color: Color(0xFFEF4444)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Color(0xFFEF4444), width: 2),
-                        ),
-                      ),
+                      label: 'Reason / Description (optional)',
+                      icon: Icons.notes_rounded,
+                      maxLines: 2,
                     ),
-                    SizedBox(height: 24),
+                    const SizedBox(height: 22),
 
-                    // Submit Button
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _submitExpense,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFFEF4444),
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 2,
-                            ),
-                            child: Text(
-                              'Add Expense Record',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _submitExpense,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text(
+                          'Add Expense Record',
+                          style: TextStyle(
+                            fontFamily: 'Outfit',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -1199,3 +757,229 @@ class _ExpensesTabState extends State<ExpensesTab> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ScanBanner extends StatelessWidget {
+  final VoidCallback onScan;
+  final String label;
+  const _ScanBanner({required this.onScan, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.indigo.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.indigo.shade100),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.indigo.shade100,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.document_scanner_outlined, color: Colors.indigo.shade700, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.indigo.shade800,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onScan,
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.indigo,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Scan', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateSelector extends StatelessWidget {
+  final List<String> months, monthNames, years;
+  final String selectedMonth, selectedYear;
+  final int selectedDay;
+  final List<int> daysInMonth;
+  final ValueChanged<String?> onMonthChanged, onYearChanged;
+  final ValueChanged<int?> onDayChanged;
+  final DateTime selectedDate;
+
+  const _DateSelector({
+    required this.months,
+    required this.monthNames,
+    required this.years,
+    required this.selectedMonth,
+    required this.selectedYear,
+    required this.selectedDay,
+    required this.daysInMonth,
+    required this.onMonthChanged,
+    required this.onYearChanged,
+    required this.onDayChanged,
+    required this.selectedDate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.calendar_month_outlined, size: 16, color: Colors.indigo.shade400),
+            const SizedBox(width: 6),
+            Text(
+              'Date  —  ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.indigo.shade600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            // Month — takes most space
+            Expanded(
+              flex: 3,
+              child: DropdownButtonFormField<String>(
+                value: selectedMonth,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'Month',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                items: months
+                    .map((m) => DropdownMenuItem(value: m, child: Text(monthNames[int.parse(m) - 1])))
+                    .toList(),
+                onChanged: onMonthChanged,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Year
+            Expanded(
+              flex: 2,
+              child: DropdownButtonFormField<String>(
+                value: selectedYear,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'Year',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                items: years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
+                onChanged: onYearChanged,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Day
+            Expanded(
+              flex: 1,
+              child: DropdownButtonFormField<int>(
+                value: selectedDay,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'Day',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                items: daysInMonth
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d.toString())))
+                    .toList(),
+                onChanged: onDayChanged,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+Widget _sectionLabel(String text) => Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Colors.grey.shade500,
+          letterSpacing: 1.1,
+        ),
+      ),
+    );
+
+InputDecoration _indigoDecoration(String label, IconData icon) => InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: Colors.indigo.shade400, size: 20),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.indigo, width: 2),
+      ),
+      filled: true,
+      fillColor: Colors.grey.shade50,
+    );
+
+Widget _indigoField({
+  required TextEditingController controller,
+  required String label,
+  required IconData icon,
+  String? Function(String?)? validator,
+  TextInputType? keyboardType,
+  List<TextInputFormatter>? inputFormatters,
+  int maxLines = 1,
+}) =>
+    TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      maxLines: maxLines,
+      decoration: _indigoDecoration(label, icon),
+      validator: validator,
+    );
