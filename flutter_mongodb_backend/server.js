@@ -43,6 +43,30 @@ const bookingSchema = new mongoose.Schema({
 
 const Booking = mongoose.model('Booking', bookingSchema);
 
+// Guest Schema — phone is the unique identifier
+const guestSchema = new mongoose.Schema({
+  phone: { type: String, required: true, unique: true, index: true },
+  name:  { type: String, required: true },
+}, { timestamps: true });
+
+const Guest = mongoose.model('Guest', guestSchema);
+
+// Helper: upsert a guest record from a booking. Skips if phone is missing.
+async function upsertGuest(name, phone) {
+  const cleanPhone = (phone || '').toString().trim();
+  if (!cleanPhone) return; // no phone → not in guest db
+  const cleanName = (name || '').toString().trim() || 'Guest';
+  try {
+    await Guest.findOneAndUpdate(
+      { phone: cleanPhone },
+      { $set: { name: cleanName }, $setOnInsert: { phone: cleanPhone } },
+      { upsert: true, new: true }
+    );
+  } catch (e) {
+    console.error('upsertGuest failed:', e.message);
+  }
+}
+
 // RoomConfig Schema — single document, all rooms for the hotel
 const roomConfigSchema = new mongoose.Schema({
   rooms: [{
@@ -151,6 +175,7 @@ app.post('/bookings', async (req, res) => {
   try {
     console.log('POST /bookings needDriver:', req.body.needDriver, '→', booking.needDriver);
     const newBooking = await booking.save();
+    await upsertGuest(req.body.guestName, req.body.guestPhone);
     res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -200,6 +225,7 @@ app.put('/bookings/:id', async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    await upsertGuest(req.body.guestName, req.body.guestPhone);
     res.json(updatedBooking);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -216,6 +242,99 @@ app.delete('/bookings/:id', async (req, res) => {
     // Use deleteOne for the document
     await Booking.deleteOne({ _id: req.params.id });
     res.json({ message: 'Booking deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GUEST ROUTES
+
+// One-time backfill: if guests collection is empty but bookings exist,
+// extract distinct (phone, name) pairs from existing bookings.
+async function backfillGuestsIfNeeded() {
+  const guestCount = await Guest.estimatedDocumentCount();
+  if (guestCount > 0) return;
+  const bookings = await Booking.find({ guestPhone: { $exists: true, $nin: [null, ''] } });
+  const seen = new Map();
+  for (const b of bookings) {
+    const phone = (b.guestPhone || '').toString().trim();
+    if (!phone || seen.has(phone)) continue;
+    seen.set(phone, { phone, name: (b.guestName || 'Guest').toString().trim() || 'Guest' });
+  }
+  if (seen.size === 0) return;
+  try {
+    await Guest.insertMany([...seen.values()], { ordered: false });
+    console.log(`Backfilled ${seen.size} guests from existing bookings`);
+  } catch (e) {
+    console.error('Guest backfill error (continuing):', e.message);
+  }
+}
+
+// List all guests with booking count + last booking date, most recent first
+app.get('/guests', async (req, res) => {
+  try {
+    await backfillGuestsIfNeeded();
+    const guests = await Guest.aggregate([
+      {
+        $lookup: {
+          from: 'bookings',
+          localField: 'phone',
+          foreignField: 'guestPhone',
+          as: 'bookings',
+        },
+      },
+      {
+        $project: {
+          phone: 1,
+          name: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          bookingCount: { $size: '$bookings' },
+          lastBooking: { $max: '$bookings.checkIn' },
+        },
+      },
+      { $sort: { lastBooking: -1, name: 1 } },
+    ]);
+    res.json(guests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Search guests by name OR phone (case-insensitive prefix-ish match) — used for autocomplete
+app.get('/guests/search', async (req, res) => {
+  try {
+    const q = (req.query.q || '').toString().trim();
+    if (!q) return res.json([]);
+    const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex meta chars
+    const regex = new RegExp(safe, 'i');
+    const guests = await Guest.find({
+      $or: [{ name: regex }, { phone: regex }],
+    })
+      .limit(10)
+      .sort({ updatedAt: -1 });
+    res.json(guests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get a single guest by phone
+app.get('/guests/:phone', async (req, res) => {
+  try {
+    const guest = await Guest.findOne({ phone: req.params.phone });
+    if (!guest) return res.status(404).json({ message: 'Guest not found' });
+    res.json(guest);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get all bookings for a guest (sorted most recent first)
+app.get('/guests/:phone/bookings', async (req, res) => {
+  try {
+    const bookings = await Booking.find({ guestPhone: req.params.phone }).sort({ checkIn: -1 });
+    res.json(bookings);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

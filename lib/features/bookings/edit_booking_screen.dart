@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:odon_booking/core/api/api_service.dart';
+import 'package:odon_booking/features/guests/widgets/guest_name_autocomplete.dart';
 
 class EditBookingScreen extends StatefulWidget {
   final Map<String, dynamic> booking;
@@ -177,7 +178,22 @@ class _EditBookingScreenState extends State<EditBookingScreen> {
             ),
             const SizedBox(height: 20),
 
-            _buildField('Guest Name', guestNameController, icon: Icons.person),
+            GuestNameAutocomplete(
+              nameController: guestNameController,
+              phoneController: guestPhoneController,
+              wrapperDecoration: const BoxDecoration(),
+              wrapperPadding: EdgeInsets.zero,
+              inputDecoration: InputDecoration(
+                labelText: 'Guest Name',
+                prefixIcon: const Icon(Icons.person, color: Colors.indigo),
+                labelStyle: const TextStyle(fontSize: 14, color: Colors.grey),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: Colors.indigo, width: 2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
             const SizedBox(height: 15),
             _buildField('Guest Phone', guestPhoneController, icon: Icons.phone),
             const SizedBox(height: 15),

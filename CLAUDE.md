@@ -74,9 +74,14 @@ lib/
 │   ├── inventory/
 │   │   ├── add_inventory_item_screen.dart
 │   │   └── edit_inventory_item_screen.dart
-│   └── ai_insights/
-│       ├── ai_insights_page.dart
-│       └── ai_insights_service.dart
+│   ├── ai_insights/
+│   │   ├── ai_insights_page.dart
+│   │   └── ai_insights_service.dart
+│   └── guests/
+│       ├── guests_list_screen.dart
+│       ├── guest_detail_screen.dart
+│       └── widgets/
+│           └── guest_name_autocomplete.dart
 └── shared/
     ├── widgets/
     │   └── data_confirmation_dialog.dart
@@ -98,6 +103,7 @@ Express.js server with Mongoose models and REST routes:
 
 - **Booking** — see full schema below
 - **RoomConfig** — single document storing all room definitions; see schema below
+- **Guest** — phone-keyed guest directory. See "Guests Feature" section below.
 - **Inventory** — hotel inventory items
 - **Salary** — employee salary records (`/salaries/month/:year/:month` for monthly queries)
 - **Expense** — business expenses with category support (`/expenses/month/:year/:month`)
@@ -250,6 +256,36 @@ Handles both old and new booking formats via `_isNewFormat` flag. New format sho
 - First Meal on Arrival dropdown (shown only for Full Board / Half Board)
 - Driver Room checkbox (`_needDriver`)
 - Balance method checkboxes (Bank / Cash)
+
+## Guests Feature
+
+Phone-keyed guest directory. Guests are auto-populated from booking saves — there is no manual "add guest" flow.
+
+### Guest Schema
+
+```js
+{
+  phone: String,   // unique, indexed — primary lookup key
+  name:  String,
+  // timestamps: createdAt, updatedAt
+}
+```
+
+### Backend behaviour (`flutter_mongodb_backend/server.js`)
+
+- `upsertGuest(name, phone)` helper: called from `POST /bookings` and `PUT /bookings/:id`. **Skips if `phone` is empty/whitespace** — guests without a phone are not added to the DB.
+- `GET /guests` — lists all guests via aggregation, joining the bookings collection to attach `bookingCount` and `lastBooking` fields. Sorted by `lastBooking` desc.
+- `GET /guests/search?q=...` — case-insensitive substring match on name OR phone, capped at 10 results, sorted by `updatedAt` desc. Used by the autocomplete.
+- `GET /guests/:phone` — single guest by phone.
+- `GET /guests/:phone/bookings` — full booking history for a guest, sorted by `checkIn` desc.
+- **One-time backfill**: `backfillGuestsIfNeeded()` runs inside `GET /guests` when the guests collection is empty, extracting distinct (phone, name) pairs from existing bookings.
+
+### Frontend
+
+- `lib/features/guests/guests_list_screen.dart` — guest directory: gradient summary banner (total guests + total bookings), search bar (filters local list), guest cards with avatar + name + phone + last visit + booking count pill. Pull to refresh.
+- `lib/features/guests/guest_detail_screen.dart` — single-guest view: hero card with name/phone/last-visit, three stat cards (bookings / room-nights / revenue), full booking history. Tapping a booking opens `EditBookingScreen`.
+- `lib/features/guests/widgets/guest_name_autocomplete.dart` — drop-in replacement for the guest-name TextField. Uses `RawAutocomplete` with the parent's existing controllers, debounces queries by 250ms, requires ≥2 characters before searching. Selecting a suggestion fills the phone controller. Wired into both `room_selection_screen.dart` (Add Booking) and `edit_booking_screen.dart`.
+- Guests tile on the home dashboard (`lib/features/home/home_screen.dart`) — pink (`0xFFDB2777`) `people_alt_rounded` icon.
 
 ## Driver Room Feature
 

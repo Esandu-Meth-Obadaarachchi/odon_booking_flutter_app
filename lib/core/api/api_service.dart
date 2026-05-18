@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Switch back to Railway URL after rehosting the backend
-  //final String baseUrl = 'http://192.168.1.26:3000';
-  final String baseUrl = 'https://odonbookingflutterapp-production.up.railway.app';
+  final String baseUrl = 'http://192.168.1.2:3000';
+  //final String baseUrl = 'https://odonbookingflutterapp-production.up.railway.app';
   // Android emulator: use http://10.0.2.2:3000
   // Physical device: use your machine's local IP, e.g. http://192.168.1.26:3000
   //http://localhost:3000
@@ -308,6 +308,48 @@ class ApiService {
     );
     if (response.statusCode != 200) {
       throw Exception('Failed to update room config: ${response.reasonPhrase}');
+    }
+  }
+
+  // GUEST METHODS
+
+  Future<List<Map<String, dynamic>>> fetchGuests() async {
+    final response = await http.get(Uri.parse('$baseUrl/guests'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch guests: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> searchGuests(String query) async {
+    final url = Uri.parse('$baseUrl/guests/search?q=${Uri.encodeQueryComponent(query)}');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to search guests: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchGuest(String phone) async {
+    final response = await http.get(Uri.parse('$baseUrl/guests/${Uri.encodeComponent(phone)}'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch guest: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchGuestBookings(String phone) async {
+    final response = await http.get(Uri.parse('$baseUrl/guests/${Uri.encodeComponent(phone)}/bookings'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch guest bookings: ${response.reasonPhrase}');
     }
   }
 

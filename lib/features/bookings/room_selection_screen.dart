@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:odon_booking/core/api/api_service.dart';
+import 'package:odon_booking/features/guests/widgets/guest_name_autocomplete.dart';
 
 class RoomSelectionScreen extends StatefulWidget {
   @override
@@ -545,8 +546,11 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Guest Name
-                    _buildTextField(_guestNameController, 'Guest Name', maxLines: 1),
+                    // Guest Name (autocomplete from Guest DB; selecting a guest fills phone)
+                    GuestNameAutocomplete(
+                      nameController: _guestNameController,
+                      phoneController: _guestPhoneController,
+                    ),
                     const SizedBox(height: 16),
 
                     // Guest Phone
