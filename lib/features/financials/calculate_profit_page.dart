@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:odon_booking/core/api/api_service.dart';
 import 'package:odon_booking/features/ai_insights/ai_insights_page.dart';
 
@@ -9,25 +8,24 @@ class CalculateProfitPage extends StatefulWidget {
 }
 
 class _CalculateProfitPageState extends State<CalculateProfitPage> {
-  DateTime _startDate = DateTime.now().subtract(Duration(days: 7));
-  DateTime _endDate = DateTime.now();
+  DateTime _startDate = DateTime.now().subtract(const Duration(days: 7));
+  DateTime _endDate   = DateTime.now();
+
   List<Map<String, dynamic>> _bookingsForSelectedRange = [];
   List<Map<String, dynamic>> _expensesForSelectedRange = [];
   List<Map<String, dynamic>> _salariesForSelectedRange = [];
+
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
-  // Revenue totals
-  double totalRevenue = 0.0;
-  double totalAdvance = 0.0;
-  double totalBalance = 0.0;
-  double totalBankBalance = 0.0;
-  double totalCashBalance = 0.0;
-
-  // Expense and salary totals
-  double totalExpenses = 0.0;
-  double totalSalaries = 0.0;
-  double totalProfit = 0.0;
+  double totalRevenue     = 0;
+  double totalAdvance     = 0;
+  double totalBalance     = 0;
+  double totalBankBalance = 0;
+  double totalCashBalance = 0;
+  double totalExpenses    = 0;
+  double totalSalaries    = 0;
+  double totalProfit      = 0;
 
   @override
   void initState() {
@@ -36,531 +34,636 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
   }
 
   Future<void> _fetchAllDataForDateRange(DateTime start, DateTime end) async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
-      // Get all unique months in the date range
-      List<DateTime> monthsToFetch = _getMonthsInRange(start, end);
+      final months     = _getMonthsInRange(start, end);
+      final allBookings = <Map<String, dynamic>>[];
+      final allExpenses = <Map<String, dynamic>>[];
+      final allSalaries = <Map<String, dynamic>>[];
 
-      List<Map<String, dynamic>> allBookings = [];
-      List<Map<String, dynamic>> allExpenses = [];
-      List<Map<String, dynamic>> allSalaries = [];
-
-      // Fetch data for each month in the range
-      for (DateTime month in monthsToFetch) {
+      for (final month in months) {
         final futures = await Future.wait([
           _apiService.fetchBookingsForMonth(month),
           _apiService.fetchExpensesForMonth(month),
           _apiService.fetchSalariesForMonth(month),
         ]);
-
-        allBookings.addAll(futures[0] as List<Map<String, dynamic>>);
-        allExpenses.addAll(futures[1] as List<Map<String, dynamic>>);
-        allSalaries.addAll(futures[2] as List<Map<String, dynamic>>);
+        allBookings.addAll(futures[0]);
+        allExpenses.addAll(futures[1]);
+        allSalaries.addAll(futures[2]);
       }
 
       setState(() {
-        // Filter bookings by check-in date within range
-        _bookingsForSelectedRange = allBookings.where((booking) {
-          final checkInDate = DateTime.parse(booking['checkIn']);
-          return checkInDate.isAfter(start.subtract(Duration(days: 1))) &&
-              checkInDate.isBefore(end.add(Duration(days: 1)));
+        _bookingsForSelectedRange = allBookings.where((b) {
+          final d = DateTime.parse(b['checkIn']);
+          return !d.isBefore(start) && !d.isAfter(end);
         }).toList();
-
-        // Filter expenses by date within range
-        _expensesForSelectedRange = allExpenses.where((expense) {
-          if (expense['date'] != null) {
-            final expenseDate = DateTime.parse(expense['date']);
-            return expenseDate.isAfter(start.subtract(Duration(days: 1))) &&
-                expenseDate.isBefore(end.add(Duration(days: 1)));
-          }
-          return false;
+        _expensesForSelectedRange = allExpenses.where((e) {
+          if (e['date'] == null) return false;
+          final d = DateTime.parse(e['date']);
+          return !d.isBefore(start) && !d.isAfter(end);
         }).toList();
-
-        // Filter salaries by date within range
-        _salariesForSelectedRange = allSalaries.where((salary) {
-          if (salary['date'] != null) {
-            final salaryDate = DateTime.parse(salary['date']);
-            return salaryDate.isAfter(start.subtract(Duration(days: 1))) &&
-                salaryDate.isBefore(end.add(Duration(days: 1)));
-          }
-          return false;
+        _salariesForSelectedRange = allSalaries.where((s) {
+          if (s['date'] == null) return false;
+          final d = DateTime.parse(s['date']);
+          return !d.isBefore(start) && !d.isAfter(end);
         }).toList();
 
         _calculateTotals();
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      print('Failed to fetch data: $e');
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to fetch data. Please try again.')),
+        const SnackBar(content: Text('Failed to fetch data. Please try again.')),
       );
     }
   }
 
   List<DateTime> _getMonthsInRange(DateTime start, DateTime end) {
-    List<DateTime> months = [];
-    DateTime current = DateTime(start.year, start.month, 1);
-    DateTime endMonth = DateTime(end.year, end.month, 1);
-
-    while (current.isBefore(endMonth) || current.isAtSameMomentAs(endMonth)) {
+    final months   = <DateTime>[];
+    var current    = DateTime(start.year, start.month);
+    final endMonth = DateTime(end.year, end.month);
+    while (!current.isAfter(endMonth)) {
       months.add(current);
-      current = DateTime(current.year, current.month + 1, 1);
+      current = DateTime(current.year, current.month + 1);
     }
-
     return months;
   }
 
   void _calculateTotals() {
-    // Reset totals
-    totalRevenue = 0.0;
-    totalAdvance = 0.0;
-    totalBalance = 0.0;
-    totalBankBalance = 0.0;
-    totalCashBalance = 0.0;
-    totalExpenses = 0.0;
-    totalSalaries = 0.0;
+    totalRevenue = totalAdvance = totalBalance =
+        totalBankBalance = totalCashBalance = totalExpenses = totalSalaries = 0;
 
-    // Calculate revenue totals
-    for (var booking in _bookingsForSelectedRange) {
-      double total = double.tryParse(booking['total'].toString()) ?? 0.0;
-      double advance = double.tryParse(booking['advance'].toString()) ?? 0.0;
-      String? balanceMethod = booking['balanceMethod'];
-
-      totalRevenue += total;
-      totalAdvance += advance;
-      totalBalance += (total - advance);
-
-      if (balanceMethod == "Bank") {
-        totalBankBalance += (total - advance);
-      } else if (balanceMethod == "Cash") {
-        totalCashBalance += (total - advance);
-      }
+    for (final b in _bookingsForSelectedRange) {
+      final t  = double.tryParse(b['total'].toString())   ?? 0;
+      final a  = double.tryParse(b['advance'].toString()) ?? 0;
+      final bm = b['balanceMethod'];
+      totalRevenue += t;
+      totalAdvance += a;
+      totalBalance += (t - a);
+      if (bm == 'Bank') totalBankBalance += (t - a);
+      if (bm == 'Cash') totalCashBalance += (t - a);
     }
-
-    // Calculate expense totals
-    for (var expense in _expensesForSelectedRange) {
-      double amount = double.tryParse(expense['amount'].toString()) ?? 0.0;
-      totalExpenses += amount;
+    for (final e in _expensesForSelectedRange) {
+      totalExpenses += double.tryParse(e['amount'].toString()) ?? 0;
     }
-
-    // Calculate salary totals
-    for (var salary in _salariesForSelectedRange) {
-      double amount = double.tryParse(salary['amount'].toString()) ?? 0.0;
-      totalSalaries += amount;
+    for (final s in _salariesForSelectedRange) {
+      totalSalaries += double.tryParse(s['amount'].toString()) ?? 0;
     }
-
-    // Calculate profit
     totalProfit = totalRevenue - totalExpenses - totalSalaries;
   }
 
-  Future<void> _selectDateRange(BuildContext context) async {
-    final DateTimeRange? picked = await showDateRangePicker(
+  Future<void> _selectDateRange() async {
+    final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.indigo,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Colors.indigo,
+            onPrimary: Colors.white,
           ),
-          child: child!,
-        );
-      },
+        ),
+        child: child!,
+      ),
     );
-
     if (picked != null) {
       setState(() {
         _startDate = picked.start;
-        _endDate = picked.end;
+        _endDate   = picked.end;
       });
       _fetchAllDataForDateRange(_startDate, _endDate);
     }
   }
 
-  void _navigateToAIInsights() {
-    final safeBookings = _bookingsForSelectedRange.isNotEmpty ? _bookingsForSelectedRange : <Map<String, dynamic>>[];
-    final safeExpenses = _expensesForSelectedRange.isNotEmpty ? _expensesForSelectedRange : <Map<String, dynamic>>[];
-    final safeSalaries = _salariesForSelectedRange.isNotEmpty ? _salariesForSelectedRange : <Map<String, dynamic>>[];
+  String _fmtDate(DateTime d) =>
+      '${d.day} ${_monthAbbr[d.month - 1]} ${d.year}';
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AiInsightsPage(
-          selectedMonth: _startDate, // You might want to adjust this in AiInsightsPage
-          totalRevenue: totalRevenue,
-          totalExpenses: totalExpenses,
-          totalSalaries: totalSalaries,
-          totalProfit: totalProfit,
-          bookings: safeBookings,
-          expenses: safeExpenses,
-          salaries: safeSalaries,
-        ),
-      ),
-    );
+  String _fmtLkr(double v) {
+    final abs = v.abs();
+    if (abs >= 1000000) {
+      return 'LKR ${(abs / 1000000).toStringAsFixed(2)}M';
+    }
+    return 'LKR ${abs.toStringAsFixed(2)}';
   }
 
-  String _formatDateRange() {
-    final startFormatted = "${_startDate.day}/${_startDate.month}/${_startDate.year}";
-    final endFormatted = "${_endDate.day}/${_endDate.month}/${_endDate.year}";
-    return "$startFormatted - $endFormatted";
-  }
-
-  int _getDaysDifference() {
-    return _endDate.difference(_startDate).inDays + 1;
-  }
+  static const _monthAbbr = [
+    'Jan','Feb','Mar','Apr','May','Jun',
+    'Jul','Aug','Sep','Oct','Nov','Dec',
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final days      = _endDate.difference(_startDate).inDays + 1;
+    final isProfit  = totalProfit >= 0;
+    final resultColor = isProfit ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
+
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
-        title: Text("Calculate Profit",
-            style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, color: Colors.white)),
-        backgroundColor: Colors.indigo,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF312E81), Color(0xFF4F46E5)],
+            ),
+          ),
+        ),
+        title: const Text(
+          'Profit Summary',
+          style: TextStyle(
+            fontFamily: 'Outfit',
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.date_range, color: Colors.white),
-            onPressed: () => _selectDateRange(context),
+          TextButton.icon(
+            onPressed: _selectDateRange,
+            icon: const Icon(Icons.date_range_rounded, color: Colors.white, size: 18),
+            label: const Text(
+              'Range',
+              style: TextStyle(color: Colors.white, fontFamily: 'Outfit'),
+            ),
           ),
         ],
-        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.indigo))
+          ? const Center(child: CircularProgressIndicator(color: Colors.indigo))
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Selected Date Range Display
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.indigoAccent,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+
+                  // ── Date range pill ──────────────────────────────────
+                  GestureDetector(
+                    onTap: _selectDateRange,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today_outlined,
+                              size: 15, color: Colors.indigo.shade400),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${_fmtDate(_startDate)}  –  ${_fmtDate(_endDate)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1E1B4B),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '$days day${days != 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(Icons.edit_calendar_outlined,
+                              size: 15, color: Colors.grey.shade400),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Net result hero ──────────────────────────────────
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Left accent stripe
+                        Container(
+                          width: 4,
+                          height: 64,
+                          margin: const EdgeInsets.only(right: 16),
+                          decoration: BoxDecoration(
+                            color: resultColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isProfit ? 'NET PROFIT' : 'NET LOSS',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: resultColor,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _fmtLkr(totalProfit),
+                                  style: TextStyle(
+                                    fontFamily: 'Outfit',
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w800,
+                                    color: resultColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Count badges
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              "📅 ${_formatDateRange()}",
-                              style: GoogleFonts.montserrat(
-                                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "${_getDaysDifference()} day${_getDaysDifference() > 1 ? 's' : ''}",
-                              style: GoogleFonts.montserrat(
-                                  fontSize: 12, color: Colors.white70),
-                            ),
+                            _countBadge(Icons.hotel_rounded,
+                                _bookingsForSelectedRange.length, Colors.indigo),
+                            const SizedBox(height: 6),
+                            _countBadge(Icons.receipt_outlined,
+                                _expensesForSelectedRange.length, Colors.pink.shade400),
+                            const SizedBox(height: 6),
+                            _countBadge(Icons.people_outline_rounded,
+                                _salariesForSelectedRange.length, Colors.orange),
                           ],
                         ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => _selectDateRange(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        child: const Text("Change", style: TextStyle(color: Colors.indigo)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Revenue Section
-            Text(
-              "📊 Revenue Overview",
-              style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildSummaryCard("Revenue", totalRevenue, Colors.green),
-                _buildSummaryCard("Advance", totalAdvance, Colors.blue),
-                _buildSummaryCard("Balance", totalBalance, Colors.orange),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Bank & Cash Balance (if applicable)
-            if (totalBankBalance > 0 || totalCashBalance > 0) ...[
-              Row(
-                children: [
-                  if (totalBankBalance > 0) _buildSummaryCard("Bank Balance", totalBankBalance, Colors.purple),
-                  if (totalCashBalance > 0) _buildSummaryCard("Cash Balance", totalCashBalance, Colors.teal),
-                  if (totalBankBalance == 0 || totalCashBalance == 0) Expanded(child: SizedBox()),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
-
-            // Expenses & Salaries Section
-            Text(
-              "💰 Expenses & Salaries",
-              style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildSummaryCard("Total Expenses", totalExpenses, Colors.red),
-                _buildSummaryCard("Total Salaries", totalSalaries, Colors.deepOrange),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Profit Section
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  colors: totalProfit >= 0
-                      ? [Colors.green[600]!, Colors.green[400]!]
-                      : [Colors.red[600]!, Colors.red[400]!],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.grey.withOpacity(0.4),
-                      blurRadius: 8,
-                      offset: Offset(0, 4)
-                  )
-                ],
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    totalProfit >= 0 ? "🎉 Net Profit" : "⚠️ Net Loss",
-                    style: GoogleFonts.montserrat(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white
+                      ],
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    "LKR ${totalProfit.abs().toStringAsFixed(2)}",
-                    style: GoogleFonts.montserrat(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    "Revenue - Expenses - Salaries",
-                    style: GoogleFonts.montserrat(
-                        fontSize: 14,
-                        color: Colors.white70
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
-            // AI Insights Button
-            Container(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _navigateToAIInsights,
-                icon: Icon(Icons.psychology, size: 24),
-                label: Text(
-                  "🤖 Get AI Business Insights",
-                  style: GoogleFonts.montserrat(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 3,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Detailed Breakdown Tabs
-            DefaultTabController(
-              length: 3,
-              child: Column(
-                children: [
-                  TabBar(
-                    labelColor: Colors.indigo,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: Colors.indigo,
-                    tabs: [
-                      Tab(text: "Bookings (${_bookingsForSelectedRange.length})"),
-                      Tab(text: "Expenses (${_expensesForSelectedRange.length})"),
-                      Tab(text: "Salaries (${_salariesForSelectedRange.length})"),
-                    ],
-                  ),
+                  // ── Ledger statement card ────────────────────────────
                   Container(
-                    height: 300,
-                    child: TabBarView(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildBookingsList(),
-                        _buildExpensesList(),
-                        _buildSalariesList(),
+
+                        // — Income section —
+                        _ledgerSectionHeader('INCOME'),
+                        _ledgerRow(
+                          label: 'Booking Revenue',
+                          amount: totalRevenue,
+                          color: const Color(0xFF16A34A),
+                          bold: true,
+                        ),
+                        _ledgerRow(
+                          label: 'Advance collected',
+                          amount: totalAdvance,
+                          color: Colors.grey.shade700,
+                          indent: 1,
+                        ),
+                        _ledgerRow(
+                          label: 'Balance due',
+                          amount: totalBalance,
+                          color: Colors.grey.shade700,
+                          indent: 1,
+                        ),
+                        if (totalBankBalance > 0)
+                          _ledgerRow(
+                            label: 'via Bank Transfer',
+                            amount: totalBankBalance,
+                            color: Colors.grey.shade500,
+                            indent: 2,
+                            small: true,
+                          ),
+                        if (totalCashBalance > 0)
+                          _ledgerRow(
+                            label: 'via Cash',
+                            amount: totalCashBalance,
+                            color: Colors.grey.shade500,
+                            indent: 2,
+                            small: true,
+                          ),
+
+                        _ledgerDivider(),
+
+                        // — Deductions section —
+                        _ledgerSectionHeader('DEDUCTIONS'),
+                        _ledgerRow(
+                          label: 'Expenses',
+                          amount: totalExpenses,
+                          color: const Color(0xFFDC2626),
+                          bold: true,
+                          negate: true,
+                        ),
+                        _ledgerRow(
+                          label: 'Salaries',
+                          amount: totalSalaries,
+                          color: const Color(0xFFEA580C),
+                          bold: true,
+                          negate: true,
+                        ),
+
+                        _ledgerDivider(thick: true),
+
+                        // — Net —
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Net',
+                                style: TextStyle(
+                                  fontFamily: 'Outfit',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1E1B4B),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${isProfit ? '' : '−'}${_fmtLkr(totalProfit)}',
+                                style: TextStyle(
+                                  fontFamily: 'Outfit',
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: resultColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── AI button ────────────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AiInsightsPage(
+                            selectedMonth: _startDate,
+                            totalRevenue: totalRevenue,
+                            totalExpenses: totalExpenses,
+                            totalSalaries: totalSalaries,
+                            totalProfit: totalProfit,
+                            bookings: _bookingsForSelectedRange,
+                            expenses: _expensesForSelectedRange,
+                            salaries: _salariesForSelectedRange,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.psychology_rounded, size: 18),
+                      label: const Text(
+                        'AI Business Insights',
+                        style: TextStyle(
+                          fontFamily: 'Outfit',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4F46E5),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Detail tabs ──────────────────────────────────────
+                  DefaultTabController(
+                    length: 3,
+                    child: Column(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: TabBar(
+                            labelColor: Colors.indigo,
+                            unselectedLabelColor: Colors.grey,
+                            indicatorColor: Colors.indigo,
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            dividerColor: Colors.transparent,
+                            labelStyle: const TextStyle(
+                              fontFamily: 'Outfit',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                            tabs: [
+                              Tab(text: 'Bookings (${_bookingsForSelectedRange.length})'),
+                              Tab(text: 'Expenses (${_expensesForSelectedRange.length})'),
+                              Tab(text: 'Salaries (${_salariesForSelectedRange.length})'),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: 320,
+                          child: TabBarView(
+                            children: [
+                              _buildBookingsList(),
+                              _buildList(_expensesForSelectedRange, isExpense: true),
+                              _buildList(_salariesForSelectedRange, isExpense: false),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
+    );
+  }
+
+  // ── Ledger components ──────────────────────────────────────────────────────
+
+  Widget _ledgerSectionHeader(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+          color: Colors.grey.shade400,
         ),
       ),
     );
   }
 
-  Widget _buildSummaryCard(String title, double value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(12),
-        margin: EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(colors: [color.withOpacity(0.9), color.withOpacity(0.6)]),
-          boxShadow: [
-            BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 5, offset: Offset(0, 3))
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-            SizedBox(height: 5),
-            Text("LKR ${value.toStringAsFixed(2)}",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-          ],
-        ),
+  Widget _ledgerDivider({bool thick = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Divider(
+        height: thick ? 1 : 1,
+        thickness: thick ? 1.5 : 0.8,
+        color: thick ? Colors.grey.shade300 : Colors.grey.shade200,
       ),
     );
   }
+
+  Widget _ledgerRow({
+    required String label,
+    required double amount,
+    required Color color,
+    int indent = 0,
+    bool bold  = false,
+    bool small = false,
+    bool negate = false,
+  }) {
+    final leftPad   = 20.0 + indent * 16.0;
+    final fontSize  = small ? 12.5 : (bold ? 14.5 : 13.5);
+    final amtPrefix = negate ? '−' : '';
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(leftPad, 6, 20, 6),
+      child: Row(
+        children: [
+          if (indent > 0) ...[
+            Container(
+              width: 3,
+              height: 3,
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade400,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
+                color: bold ? const Color(0xFF1E1B4B) : Colors.grey.shade600,
+              ),
+            ),
+          ),
+          Text(
+            '$amtPrefix${_fmtLkr(amount)}',
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _countBadge(IconData icon, int count, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 4),
+        Text(
+          count.toString(),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
+  // ── Detail list builders ───────────────────────────────────────────────────
 
   Widget _buildBookingsList() {
     if (_bookingsForSelectedRange.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.event_busy, size: 60, color: Colors.grey[400]),
-            Text("No bookings found", style: GoogleFonts.montserrat(color: Colors.grey[600])),
-          ],
-        ),
-      );
+      return _emptyState(Icons.event_busy_rounded, 'No bookings');
     }
-
     return ListView.builder(
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
       itemCount: _bookingsForSelectedRange.length,
-      itemBuilder: (context, index) {
-        final booking = _bookingsForSelectedRange[index];
-        return _buildBookingCard(booking);
-      },
+      itemBuilder: (_, i) => _buildBookingCard(_bookingsForSelectedRange[i]),
     );
   }
 
-  Widget _buildExpensesList() {
-    if (_expensesForSelectedRange.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long, size: 60, color: Colors.grey[400]),
-            Text("No expenses found", style: GoogleFonts.montserrat(color: Colors.grey[600])),
-          ],
-        ),
+  Widget _buildList(List<Map<String, dynamic>> items, {required bool isExpense}) {
+    if (items.isEmpty) {
+      return _emptyState(
+        isExpense ? Icons.receipt_long_outlined : Icons.people_outline,
+        isExpense ? 'No expenses' : 'No salaries',
       );
     }
-
     return ListView.builder(
-      padding: EdgeInsets.all(8),
-      itemCount: _expensesForSelectedRange.length,
-      itemBuilder: (context, index) {
-        final expense = _expensesForSelectedRange[index];
-        return Card(
-          elevation: 2,
-          margin: EdgeInsets.symmetric(vertical: 4),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.red[100],
-              child: Icon(Icons.receipt, color: Colors.red[700]),
-            ),
-            title: Text(expense['expenseName'] ?? 'Unknown Expense'),
-            subtitle: Text("${expense['category']} • ${expense['reason'] ?? ''}"),
-            trailing: Text(
-              "LKR ${double.tryParse(expense['amount'].toString())?.toStringAsFixed(2) ?? '0.00'}",
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red[700]),
-            ),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+      itemCount: items.length,
+      itemBuilder: (_, i) {
+        final item   = items[i];
+        final amount = double.tryParse(item['amount'].toString()) ?? 0;
+        final name   = isExpense ? (item['expenseName'] ?? '–') : (item['employeeName'] ?? '–');
+        final sub    = isExpense ? (item['category'] ?? '') : (item['salaryType'] ?? '');
+        final color  = isExpense ? Colors.red.shade700 : Colors.orange.shade700;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade100),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSalariesList() {
-    if (_salariesForSelectedRange.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people, size: 60, color: Colors.grey[400]),
-            Text("No salaries found", style: GoogleFonts.montserrat(color: Colors.grey[600])),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: EdgeInsets.all(8),
-      itemCount: _salariesForSelectedRange.length,
-      itemBuilder: (context, index) {
-        final salary = _salariesForSelectedRange[index];
-        return Card(
-          elevation: 2,
-          margin: EdgeInsets.symmetric(vertical: 4),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.orange[100],
-              child: Icon(Icons.person, color: Colors.orange[700]),
-            ),
-            title: Text(salary['employeeName'] ?? 'Unknown Employee'),
-            subtitle: Text(salary['salaryType'] ?? 'Unknown Type'),
-            trailing: Text(
-              "LKR ${double.tryParse(salary['amount'].toString())?.toStringAsFixed(2) ?? '0.00'}",
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange[700]),
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis),
+                    if (sub.isNotEmpty)
+                      Text(sub,
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  ],
+                ),
+              ),
+              Text(
+                'LKR ${amount.toStringAsFixed(0)}',
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: color),
+              ),
+            ],
           ),
         );
       },
@@ -568,41 +671,60 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
   }
 
   Widget _buildBookingCard(Map<String, dynamic> booking) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: EdgeInsets.symmetric(vertical: 4),
-      child: Padding(
-        padding: EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.indigo,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.hotel, color: Colors.white, size: 24),
+    final isNew = booking['rooms'] != null &&
+        (booking['rooms'] as List).isNotEmpty;
+    final roomLabel = isNew
+        ? (booking['rooms'] as List)
+            .cast<Map<String, dynamic>>()
+            .map((r) => 'Rm ${r['roomNumber']}')
+            .join(', ')
+        : 'Room ${booking['roomNumber'] ?? '?'}';
+    final total = double.tryParse(booking['total'].toString()) ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(roomLabel,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis),
+                if ((booking['package'] ?? '').toString().isNotEmpty)
+                  Text(
+                    booking['package'],
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                  ),
+              ],
             ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Room: ${booking['roomNumber']} - ${booking['roomType']}",
-                      style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 14)),
-                  SizedBox(height: 4),
-                  Text("Total: LKR ${booking['total']} | Advance: LKR ${booking['advance']}",
-                      style: GoogleFonts.montserrat(fontSize: 12, color: Colors.grey[700])),
-                  SizedBox(height: 4),
-                  Text("Check-in: ${booking['checkIn']}",
-                      style: GoogleFonts.montserrat(fontSize: 12, color: Colors.grey[600])),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+          Text(
+            'LKR ${total.toStringAsFixed(0)}',
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700, color: Colors.indigo),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState(IconData icon, String label) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 44, color: Colors.grey.shade300),
+          const SizedBox(height: 8),
+          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
+        ],
       ),
     );
   }

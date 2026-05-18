@@ -18,17 +18,15 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   final TextEditingController _totalCostController = TextEditingController();
   final TextEditingController _advanceAmountController = TextEditingController();
 
-  // Room config fetched from DB
   List<Map<String, dynamic>> _roomConfig = [];
   bool _configLoading = true;
 
-  String? _mealStart;  // 'Lunch' or 'Dinner' — only for Full Board / Half Board
+  String? _mealStart;
   bool _needDriver = false;
 
-  // Per-room selection state (room number as String, matching config)
   Set<String> _selectedRooms = {};
-  Set<String> _extraBedRooms = {};  // rooms upgraded with extra bed
-  Set<String> _bookedRooms = {};    // rooms already booked for selected dates
+  Set<String> _extraBedRooms = {};
+  Set<String> _bookedRooms = {};
 
   int _numOfNights = 0;
   final ApiService _apiService = ApiService();
@@ -56,7 +54,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     }
   }
 
-  // Derives the effective room type for a room (base type + optional extra bed)
   String _getRoomType(Map<String, dynamic> roomCfg) {
     final baseType = roomCfg['baseType'] as String;
     final hasExtra = _extraBedRooms.contains(roomCfg['roomNumber'] as String);
@@ -80,6 +77,12 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: Colors.indigo, onPrimary: Colors.white),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null && picked != _checkInDate) {
       setState(() {
@@ -97,6 +100,12 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       initialDate: _checkInDate ?? DateTime.now(),
       firstDate: _checkInDate ?? DateTime.now(),
       lastDate: DateTime(2030),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: Colors.indigo, onPrimary: Colors.white),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null && picked != _checkOutDate) {
       setState(() => _checkOutDate = picked);
@@ -119,7 +128,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     if (_checkInDate == null || _checkOutDate == null) return;
     try {
       final bookings = await _apiService.fetchBookingsForDateRange(_checkInDate!, _checkOutDate!);
-
       final booked = <String>{};
       for (final booking in bookings) {
         final bookingCheckIn = DateTime.parse(booking['checkIn']);
@@ -133,18 +141,15 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         if (normCI.isAtSameMomentAs(normBO)) overlaps = false;
 
         if (overlaps) {
-          // New format: rooms array
           if (booking['rooms'] != null && (booking['rooms'] as List).isNotEmpty) {
             for (final r in booking['rooms'] as List) {
               booked.add(r['roomNumber'].toString());
             }
           } else if (booking['roomNumber'] != null) {
-            // Legacy format
             booked.add(booking['roomNumber'].toString());
           }
         }
       }
-
       setState(() => _bookedRooms = booked);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -197,7 +202,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       return;
     }
 
-    // Build per-room data
     final roomsData = _selectedRooms.map((roomNum) {
       final cfg = _roomConfig.firstWhere((r) => r['roomNumber'] == roomNum, orElse: () => {});
       final roomType = cfg.isNotEmpty ? _getRoomType(cfg) : 'Double';
@@ -208,7 +212,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       };
     }).toList();
 
-    // Accumulate inventory deductions across all rooms
     final Map<String, int> totalDeductions = {};
     for (final roomData in roomsData) {
       final items = _getInventoryItemsForType(roomData['roomType'] as String);
@@ -217,7 +220,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       }
     }
 
-    // Fetch inventory and apply deductions
     List<dynamic> inventoryItems;
     try {
       inventoryItems = await _apiService.fetchInventoryItems();
@@ -290,6 +292,9 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
         content: Text(hasInventoryIssue
             ? 'Booking saved! Check inventory levels.'
             : 'Booking saved and inventory updated.'),
+        backgroundColor: Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
     _resetBooking();
@@ -422,7 +427,6 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                 ),
               ),
             ),
-            // Extra bed toggle button — shown only when selected and not blocked/booked
             if (isSelected && !isBlocked && !isBooked)
               Positioned(
                 top: 3,
@@ -462,30 +466,83 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
     );
   }
 
-  Widget _buildFloorGrid(String floor) {
+  Widget _buildFloorSection(String floor) {
     final rooms = _roomConfig.where((r) => r['floor'] == floor).toList();
     if (rooms.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.grey.shade200, blurRadius: 8, offset: const Offset(0, 2)),
-        ],
+    final isGround = floor == 'Ground';
+
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.grey.shade200),
       ),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 0.9,
-        ),
-        itemCount: rooms.length,
-        itemBuilder: (context, index) => _buildRoomCard(rooms[index]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Floor header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isGround ? Colors.indigo.shade50 : Colors.purple.shade50,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              border: Border(
+                bottom: BorderSide(
+                  color: isGround ? Colors.indigo.shade100 : Colors.purple.shade100,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isGround ? Colors.indigo : Colors.purple,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$floor Floor',
+                  style: TextStyle(
+                    fontFamily: 'Outfit',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: isGround ? Colors.indigo.shade700 : Colors.purple.shade700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${rooms.length} rooms',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isGround ? Colors.indigo.shade400 : Colors.purple.shade400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Room grid
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 0.9,
+              ),
+              itemCount: rooms.length,
+              itemBuilder: (context, index) => _buildRoomCard(rooms[index]),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -493,32 +550,85 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   Widget _buildSelectedSummary() {
     if (_selectedRooms.isEmpty) return const SizedBox.shrink();
 
-    final items = _selectedRooms.map((roomNum) {
+    final roomList = _selectedRooms.map((roomNum) {
       final cfg = _roomConfig.firstWhere((r) => r['roomNumber'] == roomNum, orElse: () => {});
       final type = cfg.isNotEmpty ? _getRoomType(cfg) : 'Unknown';
-      return '${roomNum.padLeft(3, '0')} ($type)';
-    }).join('  |  ');
+      return MapEntry(roomNum, type);
+    }).toList();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.indigo.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.indigo.shade200),
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Selected (${_selectedRooms.length} room${_selectedRooms.length > 1 ? 's' : ''})',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo, fontSize: 13),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.green.shade100,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              border: Border(bottom: BorderSide(color: Colors.green.shade200)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.green.shade700, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  '${_selectedRooms.length} room${_selectedRooms.length > 1 ? 's' : ''} selected',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.green.shade800,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(items, style: const TextStyle(fontSize: 13)),
-          const SizedBox(height: 4),
-          const Text(
-            'Tap + on a selected room to add an extra bed (upgrades to Triple / Family Plus)',
-            style: TextStyle(fontSize: 11, color: Colors.grey),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: roomList.map((entry) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.green.shade300),
+                      ),
+                      child: Text(
+                        'Room ${entry.key.padLeft(3, '0')} · ${entry.value}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green.shade800,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 12, color: Colors.green.shade600),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Tap + on a selected room to add an extra bed',
+                        style: TextStyle(fontSize: 11, color: Colors.green.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -530,170 +640,442 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Add New Booking',
-          style: TextStyle(color: Colors.white, fontFamily: 'Outfit', fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.indigo,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      backgroundColor: const Color(0xFFF5F6FA),
       body: _configLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Guest Name (autocomplete from Guest DB; selecting a guest fills phone)
-                    GuestNameAutocomplete(
-                      nameController: _guestNameController,
-                      phoneController: _guestPhoneController,
+          ? const Center(child: CircularProgressIndicator(color: Colors.indigo))
+          : CustomScrollView(
+              slivers: [
+                // Gradient header
+                SliverAppBar(
+                  expandedHeight: 120,
+                  pinned: true,
+                  backgroundColor: Colors.indigo,
+                  iconTheme: const IconThemeData(color: Colors.white),
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: const EdgeInsets.fromLTRB(56, 0, 16, 16),
+                    title: const Text(
+                      'New Booking',
+                      style: TextStyle(
+                        fontFamily: 'Outfit',
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 20,
+                      ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Guest Phone
-                    _buildTextField(_guestPhoneController, 'Guest Phone Number', keyboardType: TextInputType.phone, maxLines: 1),
-                    const SizedBox(height: 16),
-
-                    // Check-In / Check-Out
-                    Row(
-                      children: [
-                        Expanded(child: _buildDateButton(
-                          label: _checkInDate == null ? 'Check-In Date' : DateFormat('dd MMM yyyy').format(_checkInDate!),
-                          onPressed: () => _selectCheckInDate(context),
-                        )),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildDateButton(
-                          label: _checkOutDate == null ? 'Check-Out Date' : DateFormat('dd MMM yyyy').format(_checkOutDate!),
-                          onPressed: () => _selectCheckOutDate(context),
-                        )),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-
-                    if (_numOfNights > 0)
-                      Center(
-                        child: Text(
-                          '$_numOfNights night${_numOfNights > 1 ? 's' : ''}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.indigo),
+                    background: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF312E81), Color(0xFF4F46E5)],
                         ),
                       ),
-                    const SizedBox(height: 16),
-
-                    // Package
-                    _buildDropdown(
-                      label: 'Select Package',
-                      value: _packageType,
-                      items: ['Full Board', 'Half Board', 'Room Only', 'BnB', 'Dinner Only'],
-                      onChanged: (v) => setState(() {
-                        _packageType = v;
-                        // Reset meal start when package no longer needs it
-                        if (v != 'Full Board' && v != 'Half Board') _mealStart = null;
-                      }),
-                    ),
-                    if (_packageType == 'Full Board' || _packageType == 'Half Board') ...[
-                      const SizedBox(height: 16),
-                      _buildDropdown(
-                        label: 'First Meal on Arrival',
-                        value: _mealStart,
-                        items: ['Lunch', 'Dinner'],
-                        onChanged: (v) => setState(() => _mealStart = v),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-
-                    // Ground floor rooms
-                    const Text(
-                      'Ground Floor',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.indigo),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildFloorGrid('Ground'),
-                    const SizedBox(height: 16),
-
-                    // Upper floor rooms
-                    const Text(
-                      'Upper Floor',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.indigo),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildFloorGrid('Upper'),
-                    const SizedBox(height: 14),
-
-                    // Room legend
-                    _buildLegend(),
-                    const SizedBox(height: 14),
-
-                    // Selected rooms summary
-                    _buildSelectedSummary(),
-                    const SizedBox(height: 16),
-
-                    // Driver room checkbox
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 6, offset: const Offset(0, 2))],
-                      ),
-                      child: Row(
-                        children: [
-                          Checkbox(
-                            value: _needDriver,
-                            activeColor: Colors.indigo,
-                            onChanged: (v) => setState(() => _needDriver = v ?? false),
+                      child: Align(
+                        alignment: Alignment.bottomRight,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Icon(
+                            Icons.hotel_rounded,
+                            size: 56,
+                            color: Colors.white.withValues(alpha: 0.12),
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.drive_eta, size: 18, color: Colors.indigo),
-                          const SizedBox(width: 8),
-                          const Text('Requires Driver Room', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                        ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Extra Details
-                    _buildTextField(_extraDetailsController, 'Extra Details', maxLines: 3),
-                    const SizedBox(height: 16),
-
-                    // Total cost
-                    _buildTextField(_totalCostController, 'Total Cost', keyboardType: TextInputType.number, maxLines: 1),
-                    const SizedBox(height: 16),
-
-                    // Advance
-                    _buildTextField(_advanceAmountController, 'Advance Amount', keyboardType: TextInputType.number, maxLines: 1),
-                    const SizedBox(height: 24),
-
-                    // Save
-                    ElevatedButton(
-                      onPressed: _saveBooking,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        elevation: 4,
-                      ),
-                      child: const Text('Save Booking', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
+
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Guest details ─────────────────────────────────
+                        _sectionLabel('Guest Details'),
+                        const SizedBox(height: 10),
+                        Card(
+                          elevation: 0,
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                GuestNameAutocomplete(
+                                  nameController: _guestNameController,
+                                  phoneController: _guestPhoneController,
+                                ),
+                                const SizedBox(height: 12),
+                                _indigoField(
+                                  controller: _guestPhoneController,
+                                  label: 'Phone Number',
+                                  icon: Icons.phone_outlined,
+                                  keyboardType: TextInputType.phone,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ── Stay dates ────────────────────────────────────
+                        _sectionLabel('Stay Dates'),
+                        const SizedBox(height: 10),
+                        Card(
+                          elevation: 0,
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(child: _dateTile(
+                                      label: 'Check-In',
+                                      date: _checkInDate,
+                                      onTap: () => _selectCheckInDate(context),
+                                    )),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            width: 1,
+                                            height: 30,
+                                            color: Colors.grey.shade200,
+                                          ),
+                                          Icon(Icons.arrow_forward_rounded,
+                                              size: 16, color: Colors.grey.shade400),
+                                          Container(
+                                            width: 1,
+                                            height: 30,
+                                            color: Colors.grey.shade200,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(child: _dateTile(
+                                      label: 'Check-Out',
+                                      date: _checkOutDate,
+                                      onTap: () => _selectCheckOutDate(context),
+                                    )),
+                                  ],
+                                ),
+                                if (_numOfNights > 0) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.indigo.shade50,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.nights_stay_outlined,
+                                            size: 14, color: Colors.indigo.shade600),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '$_numOfNights night${_numOfNights > 1 ? 's' : ''}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.indigo.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ── Package ───────────────────────────────────────
+                        _sectionLabel('Package'),
+                        const SizedBox(height: 10),
+                        Card(
+                          elevation: 0,
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                _indigoDropdown(
+                                  label: 'Select Package',
+                                  value: _packageType,
+                                  icon: Icons.restaurant_menu_rounded,
+                                  items: ['Full Board', 'Half Board', 'Room Only', 'BnB', 'Dinner Only'],
+                                  onChanged: (v) => setState(() {
+                                    _packageType = v;
+                                    if (v != 'Full Board' && v != 'Half Board') _mealStart = null;
+                                  }),
+                                ),
+                                if (_packageType == 'Full Board' || _packageType == 'Half Board') ...[
+                                  const SizedBox(height: 12),
+                                  _indigoDropdown(
+                                    label: 'First Meal on Arrival',
+                                    value: _mealStart,
+                                    icon: Icons.restaurant_rounded,
+                                    items: ['Lunch', 'Dinner'],
+                                    onChanged: (v) => setState(() => _mealStart = v),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ── Room selection ────────────────────────────────
+                        _sectionLabel('Select Rooms'),
+                        const SizedBox(height: 10),
+                        _buildFloorSection('Ground'),
+                        const SizedBox(height: 10),
+                        _buildFloorSection('Upper'),
+                        const SizedBox(height: 12),
+
+                        // Legend
+                        _buildLegend(),
+                        const SizedBox(height: 12),
+
+                        // Selected summary
+                        _buildSelectedSummary(),
+                        if (_selectedRooms.isNotEmpty) const SizedBox(height: 20),
+
+                        // ── Options ───────────────────────────────────────
+                        _sectionLabel('Options'),
+                        const SizedBox(height: 10),
+                        Card(
+                          elevation: 0,
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setState(() => _needDriver = !_needDriver),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: _needDriver
+                                          ? Colors.amber.shade50
+                                          : Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.directions_car_rounded,
+                                      color: _needDriver
+                                          ? Colors.amber.shade700
+                                          : Colors.grey.shade400,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Requires Driver Room',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Reserve a room for driver',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Transform.scale(
+                                    scale: 0.9,
+                                    child: Switch(
+                                      value: _needDriver,
+                                      activeColor: Colors.amber.shade700,
+                                      onChanged: (v) => setState(() => _needDriver = v),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ── Financial details ─────────────────────────────
+                        _sectionLabel('Financial Details'),
+                        const SizedBox(height: 10),
+                        Card(
+                          elevation: 0,
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                _indigoField(
+                                  controller: _totalCostController,
+                                  label: 'Total Cost (LKR)',
+                                  icon: Icons.receipt_long_outlined,
+                                  keyboardType: TextInputType.number,
+                                ),
+                                const SizedBox(height: 12),
+                                _indigoField(
+                                  controller: _advanceAmountController,
+                                  label: 'Advance Amount (LKR)',
+                                  icon: Icons.payments_outlined,
+                                  keyboardType: TextInputType.number,
+                                ),
+                                const SizedBox(height: 12),
+                                _indigoField(
+                                  controller: _extraDetailsController,
+                                  label: 'Extra Details / Notes',
+                                  icon: Icons.notes_rounded,
+                                  maxLines: 3,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // ── Save button ───────────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF312E81), Color(0xFF4F46E5)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: _saveBooking,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.check_rounded, size: 20),
+                              label: const Text(
+                                'Save Booking',
+                                style: TextStyle(
+                                  fontFamily: 'Outfit',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _dateTile({
+    required String label,
+    required DateTime? date,
+    required VoidCallback onTap,
+  }) {
+    final hasDate = date != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: hasDate ? Colors.indigo.shade50 : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: hasDate ? Colors.indigo.shade200 : Colors.grey.shade200,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: hasDate ? Colors.indigo.shade500 : Colors.grey.shade500,
+                letterSpacing: 0.3,
               ),
             ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 14,
+                  color: hasDate ? Colors.indigo.shade600 : Colors.grey.shade400,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    date != null ? DateFormat('d MMM yyyy').format(date) : 'Tap to set',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: hasDate ? Colors.indigo.shade800 : Colors.grey.shade400,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildLegend() {
     return Wrap(
-      spacing: 12,
+      spacing: 10,
       runSpacing: 6,
       children: [
         _legendChip(Colors.white, Colors.grey.shade400, 'Available'),
         _legendChip(Colors.green.shade500, Colors.green.shade500, 'Selected'),
-        _legendChip(Colors.orange.shade400, Colors.orange.shade400, 'Selected + extra bed'),
+        _legendChip(Colors.orange.shade400, Colors.orange.shade400, '+Extra bed'),
         _legendChip(Colors.red.shade400, Colors.red.shade400, 'Booked'),
         _legendChip(Colors.grey.shade300, Colors.grey.shade300, 'Blocked'),
       ],
@@ -705,8 +1087,8 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 14,
-          height: 14,
+          width: 12,
+          height: 12,
           decoration: BoxDecoration(
             color: fill,
             borderRadius: BorderRadius.circular(3),
@@ -714,67 +1096,76 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
           ),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
       ],
     );
   }
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label, {
+  Widget _indigoField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 6, offset: const Offset(0, 2))],
-      ),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(border: InputBorder.none, labelText: label),
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.indigo.shade400, size: 20),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.indigo, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
       ),
     );
   }
 
-  Widget _buildDateButton({required String label, required VoidCallback onPressed}) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        foregroundColor: Colors.indigo,
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: Colors.indigo, width: 1.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        elevation: 2,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      ),
-      child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-    );
-  }
-
-  Widget _buildDropdown({
+  Widget _indigoDropdown({
     required String label,
     required String? value,
+    required IconData icon,
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 6, offset: const Offset(0, 2))],
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.indigo.shade400, size: 20),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.indigo, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
       ),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        decoration: InputDecoration(border: InputBorder.none, labelText: label),
-        items: items.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
-        onChanged: onChanged,
-      ),
+      items: items.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+      onChanged: onChanged,
     );
   }
 }
+
+Widget _sectionLabel(String text) => Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Colors.grey.shade500,
+        letterSpacing: 1.1,
+      ),
+    );
