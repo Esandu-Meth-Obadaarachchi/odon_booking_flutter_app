@@ -8,6 +8,7 @@ import 'package:odon_booking/features/inventory/add_inventory_item_screen.dart';
 import 'package:odon_booking/features/financials/calculate_profit_page.dart';
 import 'package:odon_booking/features/invoices/generate_invoice_screen.dart';
 import 'package:odon_booking/features/financials/expenses_screen.dart';
+import 'package:odon_booking/features/guests/guests_list_screen.dart';
 
 // ── Package meta ──────────────────────────────────────────────────────────────
 
@@ -711,6 +712,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => RoomSelectionScreen()))),
             _actionTile('Bookings',      Icons.calendar_month_rounded, const Color(0xFF16A34A),
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => ViewBookingsScreen()))),
+            _actionTile('Guests',        Icons.people_alt_rounded,     const Color(0xFFDB2777),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GuestsListScreen()))),
             _actionTile('Inventory',     Icons.inventory_2_rounded,    const Color(0xFFF59E0B),
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => AddInventoryItemScreen()))),
             _actionTile('Profit',        Icons.analytics_rounded,      const Color(0xFF8B5CF6),

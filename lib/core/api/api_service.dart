@@ -311,6 +311,48 @@ class ApiService {
     }
   }
 
+  // GUEST METHODS
+
+  Future<List<Map<String, dynamic>>> fetchGuests() async {
+    final response = await http.get(Uri.parse('$baseUrl/guests'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch guests: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> searchGuests(String query) async {
+    final url = Uri.parse('$baseUrl/guests/search?q=${Uri.encodeQueryComponent(query)}');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to search guests: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchGuest(String phone) async {
+    final response = await http.get(Uri.parse('$baseUrl/guests/${Uri.encodeComponent(phone)}'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch guest: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchGuestBookings(String phone) async {
+    final response = await http.get(Uri.parse('$baseUrl/guests/${Uri.encodeComponent(phone)}/bookings'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch guest bookings: ${response.reasonPhrase}');
+    }
+  }
+
   // PRICE CONFIG METHODS
 
   Future<Map<String, dynamic>> fetchPrices() async {
