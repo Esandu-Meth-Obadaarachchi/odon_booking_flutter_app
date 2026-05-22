@@ -4,6 +4,7 @@ import 'ai_insights_service.dart';
 
 class AiInsightsPage extends StatefulWidget {
   final DateTime selectedMonth;
+  final DateTime? rangeEnd;
   final double totalRevenue;
   final double totalExpenses;
   final double totalSalaries;
@@ -15,6 +16,7 @@ class AiInsightsPage extends StatefulWidget {
   const AiInsightsPage({
     Key? key,
     required this.selectedMonth,
+    this.rangeEnd,
     required this.totalRevenue,
     required this.totalExpenses,
     required this.totalSalaries,
@@ -60,13 +62,15 @@ class _AiInsightsPageState extends State<AiInsightsPage>
     try {
       final insights = await _aiService.generateBusinessInsights(
         selectedMonth: widget.selectedMonth,
+        rangeStart: widget.selectedMonth,
+        rangeEnd: widget.rangeEnd,
         totalRevenue: widget.totalRevenue,
         totalExpenses: widget.totalExpenses,
         totalSalaries: widget.totalSalaries,
         totalProfit: widget.totalProfit,
-        bookings: widget.bookings ?? [],
-        expenses: widget.expenses ?? [],
-        salaries: widget.salaries ?? [],
+        bookings: widget.bookings,
+        expenses: widget.expenses,
+        salaries: widget.salaries,
       );
 
       setState(() {
