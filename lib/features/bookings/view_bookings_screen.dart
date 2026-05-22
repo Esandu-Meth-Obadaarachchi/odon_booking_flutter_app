@@ -24,7 +24,6 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchBookingsForDay(_focusedDay);
     _fetchMonthEvents();
   }
 
@@ -45,18 +44,11 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
     return total;
   }
 
-  Future<void> _fetchBookingsForDay(DateTime day) async {
-    try {
-      final bookings = await _apiService.fetchBookings(day);
-      setState(() {
-        _bookingsForSelectedDay = bookings.where((booking) {
-          final checkInDate = DateTime.parse(booking['checkIn']);
-          return isSameDay(checkInDate, day);
-        }).toList();
-      });
-    } catch (e) {
-      print('Failed to fetch bookings: $e');
-    }
+  void _updateSelectedDayBookings(DateTime day) {
+    final key = DateTime(day.year, day.month, day.day);
+    _bookingsForSelectedDay = List<Map<String, dynamic>>.from(
+      (_events[key] ?? []).map((b) => Map<String, dynamic>.from(b as Map)),
+    );
   }
 
   Future<void> _fetchMonthEvents() async {
@@ -82,6 +74,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
       setState(() {
         _events = events;
         _totalRoomNightsForMonth = totalRoomNights;
+        if (_selectedDay != null) _updateSelectedDayBookings(_selectedDay!);
       });
     } catch (e) {
       print('Failed to fetch month events: $e');
@@ -231,8 +224,8 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
           setState(() {
             _selectedDay = selectedDay;
             _focusedDay = focusedDay;
+            _updateSelectedDayBookings(selectedDay);
           });
-          _fetchBookingsForDay(selectedDay);
         },
         onFormatChanged: (format) => setState(() => _calendarFormat = format),
         onPageChanged: (focusedDay) {
@@ -459,7 +452,7 @@ class _ViewBookingsScreenState extends State<ViewBookingsScreen> {
                         ),
                       ),
                     );
-                    if (result == true) _fetchBookingsForDay(_selectedDay ?? _focusedDay);
+                    if (result == true) await _fetchMonthEvents();
                   },
                 ),
               ],
