@@ -378,6 +378,34 @@ class ApiService {
       throw Exception('Failed to update prices: ${response.reasonPhrase}');
     }
   }
+
+  /// Sends an invoice PDF to a guest via the backend's WhatsApp Cloud API route.
+  Future<void> sendInvoiceWhatsApp({
+    required String phone,
+    required String guestName,
+    required List<int> pdfBytes,
+    required String fileName,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/invoices/send-whatsapp'),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({
+        'phone': phone,
+        'guestName': guestName,
+        'fileName': fileName,
+        'pdfBase64': base64Encode(pdfBytes),
+      }),
+    );
+    if (response.statusCode != 200) {
+      String msg;
+      try {
+        msg = (jsonDecode(response.body)['message'] ?? 'Unknown error').toString();
+      } catch (_) {
+        msg = response.reasonPhrase ?? 'Unknown error';
+      }
+      throw Exception(msg);
+    }
+  }
 }
 
 

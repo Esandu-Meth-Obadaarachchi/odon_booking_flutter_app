@@ -4,6 +4,39 @@ import 'package:odon_booking/core/api/api_service.dart';
 import 'package:odon_booking/features/guests/widgets/guest_name_autocomplete.dart';
 
 class RoomSelectionScreen extends StatefulWidget {
+  /// Optional values used to pre-fill the booking form — e.g. when this screen
+  /// is opened from the Generate Invoice screen. Room selection itself is
+  /// always left to the user; only the surrounding details are filled in.
+  final String? prefillGuestName;
+  final String? prefillGuestPhone;
+  final DateTime? prefillCheckIn;
+  final DateTime? prefillCheckOut;
+  final String? prefillPackage;
+  final String? prefillMealStart;
+  final bool prefillNeedDriver;
+  final String? prefillTotal;
+  final String? prefillAdvance;
+  final String? prefillExtraDetails;
+
+  /// Human-readable summary of the room mix from the invoice, shown as a hint
+  /// above the room map (e.g. "2x Double, 1x Family").
+  final String? roomHint;
+
+  const RoomSelectionScreen({
+    Key? key,
+    this.prefillGuestName,
+    this.prefillGuestPhone,
+    this.prefillCheckIn,
+    this.prefillCheckOut,
+    this.prefillPackage,
+    this.prefillMealStart,
+    this.prefillNeedDriver = false,
+    this.prefillTotal,
+    this.prefillAdvance,
+    this.prefillExtraDetails,
+    this.roomHint,
+  }) : super(key: key);
+
   @override
   _RoomSelectionScreenState createState() => _RoomSelectionScreenState();
 }
@@ -34,7 +67,27 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
   @override
   void initState() {
     super.initState();
+    _applyPrefill();
     _fetchRoomConfig();
+  }
+
+  /// Applies any values passed in via the widget constructor (used when this
+  /// screen is launched from the Generate Invoice flow).
+  void _applyPrefill() {
+    _guestNameController.text = widget.prefillGuestName ?? '';
+    _guestPhoneController.text = widget.prefillGuestPhone ?? '';
+    _extraDetailsController.text = widget.prefillExtraDetails ?? '';
+    _totalCostController.text = widget.prefillTotal ?? '';
+    _advanceAmountController.text = widget.prefillAdvance ?? '';
+    _checkInDate = widget.prefillCheckIn;
+    _checkOutDate = widget.prefillCheckOut;
+    _packageType = widget.prefillPackage;
+    _mealStart = widget.prefillMealStart;
+    _needDriver = widget.prefillNeedDriver;
+    if (_checkInDate != null && _checkOutDate != null) {
+      _numOfNights = _checkOutDate!.difference(_checkInDate!).inDays;
+      _fetchBookingsForDateRange();
+    }
   }
 
   Future<void> _fetchRoomConfig() async {
@@ -844,6 +897,10 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
                         // ── Room selection ────────────────────────────────
                         _sectionLabel('Select Rooms'),
                         const SizedBox(height: 10),
+                        if (widget.roomHint != null) ...[
+                          _buildRoomHintBanner(),
+                          const SizedBox(height: 10),
+                        ],
                         _buildFloorSection('Ground'),
                         const SizedBox(height: 10),
                         _buildFloorSection('Upper'),
@@ -1064,6 +1121,33 @@ class _RoomSelectionScreenState extends State<RoomSelectionScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRoomHintBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.receipt_long_rounded, size: 16, color: Colors.amber.shade800),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'From invoice: ${widget.roomHint}. Select the matching rooms below.',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.amber.shade900,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

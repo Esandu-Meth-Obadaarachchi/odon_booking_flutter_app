@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'invoice.dart' as invoice;
 import 'package:odon_booking/core/api/api_service.dart';
 import 'package:odon_booking/features/financials/price_settings_screen.dart';
+import 'package:odon_booking/features/bookings/room_selection_screen.dart';
 
 class Room {
   String type;
@@ -1326,7 +1327,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
     final fmt = NumberFormat('#,##0.00');
 
-    await invoice.generateInvoice(
+    final invoiceResult = await invoice.generateInvoice(
       guestName: _nameController.text,
       guestPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
       checkIn: _checkInController.text,
@@ -1349,12 +1350,221 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       specialNotes: combinedNotes,
     );
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Invoice generated and saved to Downloads folder'),
         backgroundColor: Colors.green.shade600,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+
+    _showPostInvoiceActions(invoiceResult);
+  }
+
+  // ─── Post-invoice actions ────────────────────────────────────────────────
+
+  /// Shown after the invoice PDF is generated — offers to send it to the guest
+  /// on WhatsApp and/or add the booking to the system.
+  Future<void> _showPostInvoiceActions(invoice.InvoiceResult result) async {
+    final phone = _phoneController.text.trim();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: Colors.green.shade600),
+            const SizedBox(width: 10),
+            const Text('Invoice Ready'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'What would you like to do next?',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 14),
+            if (phone.isNotEmpty) ...[
+              _dialogAction(
+                icon: Icons.chat_rounded,
+                color: const Color(0xFF25D366),
+                title: 'Send to guest on WhatsApp',
+                subtitle: phone,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sendInvoiceWhatsApp(result);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+            _dialogAction(
+              icon: Icons.event_available_rounded,
+              color: Colors.indigo,
+              title: 'Add as a booking',
+              subtitle: 'Pre-fills the New Booking screen',
+              onTap: () {
+                Navigator.pop(ctx);
+                _openAddBooking();
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dialogAction({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 14)),
+                  Text(subtitle,
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Sends the generated invoice PDF to the guest via the WhatsApp Cloud API.
+  Future<void> _sendInvoiceWhatsApp(invoice.InvoiceResult result) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          const Center(child: CircularProgressIndicator(color: Colors.indigo)),
+    );
+    try {
+      await ApiService().sendInvoiceWhatsApp(
+        phone: _phoneController.text.trim(),
+        guestName: _nameController.text.trim(),
+        pdfBytes: result.pdfBytes,
+        fileName: result.fileName,
+      );
+      if (!mounted) return;
+      Navigator.pop(context); // dismiss the loading spinner
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Invoice sent to ${_nameController.text.trim()} on WhatsApp'),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // dismiss the loading spinner
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('WhatsApp send failed: $e'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  // ─── Add booking from invoice ────────────────────────────────────────────
+
+  /// Maps an invoice package label to the booking system's package label.
+  /// The two screens use slightly different names for the same packages.
+  String? _mapPackageToBooking(String invoicePackage) {
+    switch (invoicePackage) {
+      case 'Full Board':
+        return 'Full Board';
+      case 'Half Board':
+        return 'Half Board';
+      case 'Room Only':
+        return 'Room Only';
+      case 'Bed and Breakfast':
+        return 'BnB';
+      case 'Room + Dinner':
+        return 'Dinner Only';
+      default:
+        return null;
+    }
+  }
+
+  /// Opens the New Booking screen pre-filled with this invoice's details.
+  void _openAddBooking() {
+    final roomHint = [
+      ..._selectedRooms.map((r) => '${r.quantity}x ${r.type}'),
+      if (_includeDriverRoom) '1x Driver Room',
+    ].join(', ');
+
+    String? mealStart;
+    if (!_customizePackages &&
+        (_packageType == 'Full Board' || _packageType == 'Half Board')) {
+      mealStart = _startMeal;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RoomSelectionScreen(
+          prefillGuestName: _nameController.text,
+          prefillGuestPhone:
+              _phoneController.text.isNotEmpty ? _phoneController.text : null,
+          prefillCheckIn: _checkInDate,
+          prefillCheckOut: _checkOutDate,
+          prefillPackage: _mapPackageToBooking(_packageType),
+          prefillMealStart: mealStart,
+          prefillNeedDriver: _includeDriverRoom,
+          prefillTotal: _totalAmount.toStringAsFixed(2),
+          prefillAdvance:
+              _advanceAmount > 0 ? _advanceAmount.toStringAsFixed(2) : null,
+          prefillExtraDetails: _specialNotesController.text,
+          roomHint: roomHint.isNotEmpty ? roomHint : null,
+        ),
       ),
     );
   }
