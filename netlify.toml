@@ -1,0 +1,13 @@
+# Netlify config for the Flutter web build.
+# The app is built locally with `flutter build web --release`,
+# then deployed via the Netlify CLI (see README / deploy command).
+
+[build]
+  publish = "build/web"
+
+# SPA fallback — route every path back to index.html so deep links
+# and refreshes don't 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
