@@ -434,6 +434,7 @@ class _CalculateProfitPageState extends State<CalculateProfitPage> {
                         MaterialPageRoute(
                           builder: (_) => AiInsightsPage(
                             selectedMonth: _startDate,
+                            rangeEnd: _endDate,
                             totalRevenue: totalRevenue,
                             totalExpenses: totalExpenses,
                             totalSalaries: totalSalaries,

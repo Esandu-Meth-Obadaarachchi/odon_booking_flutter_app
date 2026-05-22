@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 class ImageProcessorService {
-  static const String _geminiApiKey = 'AIzaSyCWTsQuUv6XLDBULMNBUvKKqpDqlyKrL8A'; // Replace with your actual API key
+  static const String _geminiApiKey = 'AIzaSyAV0JeIGdcTSkGU5mRvGVjFt248jRTzWpk'; // Replace with your actual API key
   static const String _geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
   final ImagePicker _picker = ImagePicker();
@@ -132,7 +132,13 @@ class ImageProcessorService {
           'temperature': 0.2,
           'topK': 40,
           'topP': 0.95,
-          'maxOutputTokens': 8192,
+          'maxOutputTokens': 32768,
+          // Newer Gemini models enable "thinking" by default, which eats the
+          // output-token budget and truncates the JSON after only a few rows.
+          // thinkingBudget: 0 disables it so the whole budget goes to output.
+          'thinkingConfig': {
+            'thinkingBudget': 0,
+          },
         }
       };
 
@@ -149,7 +155,13 @@ class ImageProcessorService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['candidates'] != null && data['candidates'].isNotEmpty) {
-          final text = data['candidates'][0]['content']['parts'][0]['text'];
+          final candidate = data['candidates'][0];
+          final finishReason = candidate['finishReason'];
+          if (finishReason != null && finishReason != 'STOP') {
+            print('WARNING: Gemini finishReason="$finishReason" — output was '
+                'cut off. Some records may be missing.');
+          }
+          final text = candidate['content']['parts'][0]['text'];
           print('Gemini response text: $text');
           return _parseGeminiResponse(text);
         } else {
