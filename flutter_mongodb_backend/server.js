@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const whatsappBot = require('./whatsapp_bot');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -10,6 +11,7 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json({ limit: '15mb' })); // raised to allow base64 PDF uploads
+app.use('/media', express.static(__dirname + '/media')); // chatbot media files
 
 // Remove this line, as it's invalid JavaScript
 // hello12345hello@cluster1
@@ -808,3 +810,9 @@ app.post('/invoices/send-whatsapp', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// ─── WhatsApp chatbot webhook ──────────────────────────────────────────────
+// GET verifies the webhook with Meta; POST receives incoming guest messages.
+// See whatsapp_bot.js for the Claude-powered reply logic.
+app.get('/whatsapp/webhook', whatsappBot.verifyWebhook);
+app.post('/whatsapp/webhook', whatsappBot.handleIncomingMessage);
