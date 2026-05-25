@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 
-Future<void> saveAndOpenPdf(List<int> bytes, String fileName) async {
+Future<String?> saveAndOpenPdf(List<int> bytes, String fileName) async {
   final output = await getTemporaryDirectory();
   final file = File('${output.path}/$fileName');
   await file.writeAsBytes(bytes);
@@ -17,4 +17,8 @@ Future<void> saveAndOpenPdf(List<int> bytes, String fileName) async {
   } catch (_) {}
 
   await OpenFile.open(file.path);
+  return null;
 }
+
+void openPdfUrl(String url) {}
+

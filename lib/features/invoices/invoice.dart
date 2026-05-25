@@ -4,7 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:odon_booking/core/utils/file_saver.dart';
 
 //PUT TO DEV FIRST
-Future<void> generateInvoice({
+Future<String?> generateInvoice({
   required String guestName,
   String? guestPhone,
   required String checkIn,
@@ -630,7 +630,7 @@ Future<void> generateInvoice({
   );
 
   final bytes = await pdf.save();
-  await saveAndOpenPdf(bytes.toList(), 'invoice_$invoiceNumber.pdf');
+  return await saveAndOpenPdf(bytes.toList(), 'invoice_$invoiceNumber.pdf');
 }
 
 // Class to handle extra charges
