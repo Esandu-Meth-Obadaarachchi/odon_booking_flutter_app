@@ -1,5 +1,6 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'dart:typed_data';
 
 // Holds the blob URL of the most recently generated PDF so a follow-up user
 // gesture (e.g. a button tap in a dialog) can open it. iOS Safari blocks
@@ -15,21 +16,19 @@ Future<String?> saveAndOpenPdf(List<int> bytes, String fileName) async {
     } catch (_) {}
   }
 
-  final blob = html.Blob([bytes], 'application/pdf');
+  // Wrap the bytes in a typed Uint8List so the browser receives the payload
+  // as a real ArrayBufferView. Passing a plain List<int> serializes as a JS
+  // Array of numbers, which Blob coerces into broken text content — the file
+  // saves at roughly the right size but cannot be rendered as a PDF anywhere.
+  final blob = html.Blob([Uint8List.fromList(bytes)], 'application/pdf');
   final url = html.Url.createObjectUrlFromBlob(blob);
   _lastPdfUrl = url;
 
-  // Trigger a normal download for desktop browsers. On iOS Safari this is a
-  // no-op (Safari ignores the `download` attribute on cross-origin / blob
-  // URLs), which is why we also return the URL so the UI can offer an
-  // explicit "Open PDF" button on a fresh user gesture.
-  final anchor = html.AnchorElement(href: url)
-    ..setAttribute('download', fileName)
-    ..style.display = 'none';
-  html.document.body!.append(anchor);
-  anchor.click();
-  anchor.remove();
-
+  // No auto-download here: on iOS Safari clicking an anchor with `download`
+  // ignores the attribute and instead navigates the current tab to the blob
+  // URL, which kills the Flutter app before any follow-up dialog can render.
+  // The caller shows an explicit "Open PDF" button that opens the URL on a
+  // fresh user gesture (works on iOS Safari, iOS Chrome and desktop).
   return url;
 }
 
