@@ -22,3 +22,5 @@ Future<String?> saveAndOpenPdf(List<int> bytes, String fileName) async {
 
 void openPdfUrl(String url) {}
 
+Future<bool> sharePdfLast() async => false;
+

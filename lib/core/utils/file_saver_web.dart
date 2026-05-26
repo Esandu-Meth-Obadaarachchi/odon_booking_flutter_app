@@ -2,14 +2,11 @@
 import 'dart:html' as html;
 import 'dart:typed_data';
 
-// Holds the blob URL of the most recently generated PDF so a follow-up user
-// gesture (e.g. a button tap in a dialog) can open it. iOS Safari blocks
-// `window.open()` calls that happen after an async gap, so we rely on the
-// caller to open the URL from a fresh tap.
 String? _lastPdfUrl;
+List<int>? _lastPdfBytes;
+String? _lastPdfFileName;
 
 Future<String?> saveAndOpenPdf(List<int> bytes, String fileName) async {
-  // Revoke previous URL so we don't accumulate blobs across invoices.
   if (_lastPdfUrl != null) {
     try {
       html.Url.revokeObjectUrl(_lastPdfUrl!);
@@ -23,15 +20,45 @@ Future<String?> saveAndOpenPdf(List<int> bytes, String fileName) async {
   final blob = html.Blob([Uint8List.fromList(bytes)], 'application/pdf');
   final url = html.Url.createObjectUrlFromBlob(blob);
   _lastPdfUrl = url;
+  _lastPdfBytes = bytes;
+  _lastPdfFileName = fileName;
 
-  // No auto-download here: on iOS Safari clicking an anchor with `download`
-  // ignores the attribute and instead navigates the current tab to the blob
-  // URL, which kills the Flutter app before any follow-up dialog can render.
-  // The caller shows an explicit "Open PDF" button that opens the URL on a
-  // fresh user gesture (works on iOS Safari, iOS Chrome and desktop).
   return url;
 }
 
 void openPdfUrl(String url) {
   html.window.open(url, '_blank');
+}
+
+// Tries the Web Share API with a real File object. This is what iOS Safari
+// needs to share to WhatsApp/Mail with the correct filename and *without*
+// leaking the page URL as a caption (which is what happens when the user
+// shares a blob: URL from inside Safari's PDF viewer).
+//
+// Returns true if the share sheet was invoked, false if the browser does not
+// support sharing files (in which case the caller should fall back to the
+// Open PDF flow).
+Future<bool> sharePdfLast() async {
+  final bytes = _lastPdfBytes;
+  final fileName = _lastPdfFileName;
+  if (bytes == null || fileName == null) return false;
+
+  try {
+    final blob = html.Blob(
+      [Uint8List.fromList(bytes)],
+      'application/pdf',
+    );
+    final file = html.File(
+      [blob],
+      fileName,
+      {'type': 'application/pdf'},
+    );
+    await html.window.navigator.share({
+      'files': [file],
+      'title': fileName,
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
