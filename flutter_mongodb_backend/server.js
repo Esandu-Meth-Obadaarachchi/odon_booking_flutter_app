@@ -1,14 +1,17 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const whatsappBot = require('./whatsapp_bot');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '15mb' })); // raised to allow base64 PDF uploads
+app.use('/media', express.static(__dirname + '/media')); // chatbot media files
 
 // Remove this line, as it's invalid JavaScript
 // hello12345hello@cluster1
@@ -691,3 +694,125 @@ app.get('/salaries/month/:year/:month', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// ─── WhatsApp: send an invoice PDF to a guest ──────────────────────────────
+// Uses the WhatsApp Business Cloud API. Credentials come from env vars:
+//   WHATSAPP_TOKEN                - permanent access token (Meta System User)
+//   WHATSAPP_PHONE_NUMBER_ID      - the Cloud API phone number ID
+//   WHATSAPP_TEMPLATE_NAME        - approved template name (default: invoice_send)
+//   WHATSAPP_TEMPLATE_LANG        - template language code (default: en_US)
+//   WHATSAPP_DEFAULT_COUNTRY_CODE - prepended to local numbers (default: 94)
+const GRAPH_API_VERSION = 'v21.0';
+
+// Normalises a phone number to WhatsApp's format: digits only, with country
+// code, no leading '+' or '0'.
+function normalizeWhatsAppPhone(raw) {
+  let digits = (raw || '').toString().replace(/\D/g, '');
+  const cc = (process.env.WHATSAPP_DEFAULT_COUNTRY_CODE || '94').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('00')) digits = digits.slice(2);          // 0094... -> 94...
+  if (digits.startsWith('0')) digits = cc + digits.slice(1);      // 077... -> 9477...
+  else if (!digits.startsWith(cc) && digits.length <= 9) digits = cc + digits;
+  return digits;
+}
+
+app.post('/invoices/send-whatsapp', async (req, res) => {
+  try {
+    const { phone, guestName, pdfBase64, fileName } = req.body;
+
+    const token = process.env.WHATSAPP_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const templateName = process.env.WHATSAPP_TEMPLATE_NAME || 'invoice_send';
+    const templateLang = process.env.WHATSAPP_TEMPLATE_LANG || 'en_US';
+
+    if (!token || !phoneNumberId) {
+      return res.status(500).json({
+        message: 'WhatsApp is not configured on the server. Set WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID.',
+      });
+    }
+    if (!pdfBase64) return res.status(400).json({ message: 'pdfBase64 is required' });
+
+    const to = normalizeWhatsAppPhone(phone);
+    if (!to) return res.status(400).json({ message: 'A valid guest phone number is required' });
+
+    const safeFileName = (fileName || 'invoice.pdf').toString();
+
+    // 1. Upload the PDF to the WhatsApp media endpoint -> media ID
+    const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+    const form = new FormData();
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', 'application/pdf');
+    form.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), safeFileName);
+
+    const uploadResp = await fetch(
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/media`,
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
+    );
+    const uploadData = await uploadResp.json();
+    if (!uploadResp.ok || !uploadData.id) {
+      return res.status(502).json({
+        message: 'Failed to upload the PDF to WhatsApp',
+        details: uploadData.error || uploadData,
+      });
+    }
+
+    // 2. Send the template message, with the uploaded PDF as the header document
+    const messagePayload = {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: templateLang },
+        components: [
+          {
+            type: 'header',
+            parameters: [
+              {
+                type: 'document',
+                document: { id: uploadData.id, filename: safeFileName },
+              },
+            ],
+          },
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: (guestName || 'Guest').toString().trim() || 'Guest' },
+            ],
+          },
+        ],
+      },
+    };
+
+    const sendResp = await fetch(
+      `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(messagePayload),
+      }
+    );
+    const sendData = await sendResp.json();
+    if (!sendResp.ok) {
+      return res.status(502).json({
+        message: 'WhatsApp rejected the message',
+        details: sendData.error || sendData,
+      });
+    }
+
+    res.json({
+      success: true,
+      to,
+      messageId: sendData.messages && sendData.messages[0] && sendData.messages[0].id,
+    });
+  } catch (err) {
+    console.error('send-whatsapp failed:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── WhatsApp chatbot webhook ──────────────────────────────────────────────
+// GET verifies the webhook with Meta; POST receives incoming guest messages.
+// See whatsapp_bot.js for the Claude-powered reply logic.
+app.get('/whatsapp/webhook', whatsappBot.verifyWebhook);
+app.post('/whatsapp/webhook', whatsappBot.handleIncomingMessage);

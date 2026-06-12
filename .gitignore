@@ -46,3 +46,6 @@ app.*.map.json
 
 # Netlify CLI local state
 .netlify/
+
+# Environment variables (never commit secrets/tokens)
+.env
