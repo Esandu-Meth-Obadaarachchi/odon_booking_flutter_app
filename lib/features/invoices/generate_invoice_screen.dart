@@ -6,6 +6,7 @@ import 'invoice.dart' as invoice;
 import 'package:odon_booking/core/api/api_service.dart';
 import 'package:odon_booking/core/utils/file_saver.dart' as file_saver;
 import 'package:odon_booking/features/financials/price_settings_screen.dart';
+import 'package:odon_booking/features/bookings/room_selection_screen.dart';
 
 class Room {
   String type;
@@ -1337,7 +1338,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
     final fmt = NumberFormat('#,##0.00');
 
-    final pdfUrl = await invoice.generateInvoice(
+    final result = await invoice.generateInvoice(
       guestName: _nameController.text,
       guestPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
       checkIn: _checkInController.text,
@@ -1363,7 +1364,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     if (!mounted) return;
 
     final summaryMessage = _buildWhatsAppSummary(fmt);
-    _showInvoiceReadyDialog(summaryMessage, pdfUrl);
+    _showInvoiceReadyDialog(summaryMessage, result);
   }
 
   String _buildWhatsAppSummary(NumberFormat fmt) {
@@ -1420,7 +1421,9 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     return '$day$suffix ${DateFormat('MMMM').format(d)}';
   }
 
-  void _showInvoiceReadyDialog(String message, String? pdfUrl) {
+  void _showInvoiceReadyDialog(String message, invoice.InvoiceResult result) {
+    final pdfUrl = result.pdfUrl;
+    final phone = _phoneController.text.trim();
     showDialog<void>(
       context: context,
       builder: (ctx) {
@@ -1543,6 +1546,40 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'NEXT STEPS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade600,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (phone.isNotEmpty) ...[
+                    _dialogAction(
+                      icon: Icons.attach_file_rounded,
+                      color: const Color(0xFF25D366),
+                      title: 'Send PDF on WhatsApp',
+                      subtitle: phone,
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _sendInvoiceWhatsApp(result);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  _dialogAction(
+                    icon: Icons.event_available_rounded,
+                    color: Colors.indigo,
+                    title: 'Add as a booking',
+                    subtitle: 'Pre-fills the New Booking screen',
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _openAddBooking();
+                    },
+                  ),
                 ],
               ),
             ),
@@ -1555,6 +1592,150 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
           ],
         );
       },
+    );
+  }
+
+  // ─── Post-invoice action helpers ─────────────────────────────────────────
+
+  Widget _dialogAction({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 14)),
+                  Text(subtitle,
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Sends the generated invoice PDF to the guest via the WhatsApp Cloud API.
+  Future<void> _sendInvoiceWhatsApp(invoice.InvoiceResult result) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          const Center(child: CircularProgressIndicator(color: Colors.indigo)),
+    );
+    try {
+      await ApiService().sendInvoiceWhatsApp(
+        phone: _phoneController.text.trim(),
+        guestName: _nameController.text.trim(),
+        pdfBytes: result.pdfBytes,
+        fileName: result.fileName,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Invoice sent to ${_nameController.text.trim()} on WhatsApp'),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('WhatsApp send failed: $e'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  /// Maps an invoice package label to the booking system's package label.
+  String? _mapPackageToBooking(String invoicePackage) {
+    switch (invoicePackage) {
+      case 'Full Board':
+        return 'Full Board';
+      case 'Half Board':
+        return 'Half Board';
+      case 'Room Only':
+        return 'Room Only';
+      case 'Bed and Breakfast':
+        return 'BnB';
+      case 'Room + Dinner':
+        return 'Dinner Only';
+      default:
+        return null;
+    }
+  }
+
+  /// Opens the New Booking screen pre-filled with this invoice's details.
+  void _openAddBooking() {
+    final roomHint = [
+      ..._selectedRooms.map((r) => '${r.quantity}x ${r.type}'),
+      if (_includeDriverRoom) '1x Driver Room',
+    ].join(', ');
+
+    String? mealStart;
+    if (!_customizePackages &&
+        (_packageType == 'Full Board' || _packageType == 'Half Board')) {
+      mealStart = _startMeal;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RoomSelectionScreen(
+          prefillGuestName: _nameController.text,
+          prefillGuestPhone:
+              _phoneController.text.isNotEmpty ? _phoneController.text : null,
+          prefillCheckIn: _checkInDate,
+          prefillCheckOut: _checkOutDate,
+          prefillPackage: _mapPackageToBooking(_packageType),
+          prefillMealStart: mealStart,
+          prefillNeedDriver: _includeDriverRoom,
+          prefillTotal: _totalAmount.toStringAsFixed(2),
+          prefillAdvance:
+              _advanceAmount > 0 ? _advanceAmount.toStringAsFixed(2) : null,
+          prefillExtraDetails: _specialNotesController.text,
+          roomHint: roomHint.isNotEmpty ? roomHint : null,
+        ),
+      ),
     );
   }
 }

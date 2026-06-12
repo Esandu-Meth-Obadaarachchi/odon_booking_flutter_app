@@ -4,7 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:odon_booking/core/utils/file_saver.dart';
 
 //PUT TO DEV FIRST
-Future<String?> generateInvoice({
+Future<InvoiceResult> generateInvoice({
   required String guestName,
   String? guestPhone,
   required String checkIn,
@@ -630,7 +630,21 @@ Future<String?> generateInvoice({
   );
 
   final bytes = await pdf.save();
-  return await saveAndOpenPdf(bytes.toList(), 'invoice_$invoiceNumber.pdf');
+  final byteList = bytes.toList();
+  final fileName = 'invoice_$invoiceNumber.pdf';
+  final pdfUrl = await saveAndOpenPdf(byteList, fileName);
+  return InvoiceResult(byteList, fileName, pdfUrl);
+}
+
+/// Result of generating an invoice PDF — the raw bytes, the file name, and
+/// the URL produced by the platform-specific saver (a blob URL on web, null
+/// on mobile). Callers use the bytes to send the same document elsewhere
+/// (e.g. over WhatsApp) and the URL to drive "Open PDF" / "Share PDF".
+class InvoiceResult {
+  final List<int> pdfBytes;
+  final String fileName;
+  final String? pdfUrl;
+  InvoiceResult(this.pdfBytes, this.fileName, this.pdfUrl);
 }
 
 // Class to handle extra charges
