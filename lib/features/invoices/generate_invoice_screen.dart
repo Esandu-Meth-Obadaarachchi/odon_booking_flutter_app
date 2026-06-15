@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'invoice.dart' as invoice;
 import 'package:odon_booking/core/api/api_service.dart';
+import 'package:odon_booking/core/utils/file_saver.dart' as file_saver;
 import 'package:odon_booking/features/financials/price_settings_screen.dart';
 
 class Room {
@@ -25,6 +28,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _nicController = TextEditingController();
   final TextEditingController _checkInController = TextEditingController();
   final TextEditingController _checkOutController = TextEditingController();
   final TextEditingController _additionalDiscountController = TextEditingController();
@@ -104,6 +108,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _nicController.dispose();
     _checkInController.dispose();
     _checkOutController.dispose();
     _additionalDiscountController.dispose();
@@ -332,6 +337,12 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                             label: 'Phone Number (Optional)',
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 12),
+                          _field(
+                            controller: _nicController,
+                            label: 'NIC (Optional)',
+                            icon: Icons.badge_outlined,
                           ),
                         ],
                       ),
@@ -1326,7 +1337,7 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
 
     final fmt = NumberFormat('#,##0.00');
 
-    await invoice.generateInvoice(
+    final pdfUrl = await invoice.generateInvoice(
       guestName: _nameController.text,
       guestPhone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
       checkIn: _checkInController.text,
@@ -1349,13 +1360,201 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
       specialNotes: combinedNotes,
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Invoice generated and saved to Downloads folder'),
-        backgroundColor: Colors.green.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+    if (!mounted) return;
+
+    final summaryMessage = _buildWhatsAppSummary(fmt);
+    _showInvoiceReadyDialog(summaryMessage, pdfUrl);
+  }
+
+  String _buildWhatsAppSummary(NumberFormat fmt) {
+    final nights = _checkOutDate!.difference(_checkInDate!).inDays;
+
+    String dateLine;
+    if (nights == 1) {
+      dateLine = _ordinalDate(_checkInDate!);
+    } else {
+      dateLine = '${_ordinalDate(_checkInDate!)} - ${_ordinalDate(_checkOutDate!)}';
+    }
+
+    final roomLines = <String>[];
+    for (final r in _selectedRooms) {
+      final label = r.quantity == 1 ? '${r.type} room' : '${r.type} rooms';
+      roomLines.add('${r.quantity} $label');
+    }
+    if (_includeDriverRoom) roomLines.add('1 Driver room');
+
+    final buffer = StringBuffer();
+    buffer.writeln('Dear sir,');
+    buffer.writeln('Pls check whether the following details are correct.');
+    buffer.writeln('Name : ${_nameController.text}');
+    if (_nicController.text.trim().isNotEmpty) {
+      buffer.writeln('NIC : ${_nicController.text.trim()}');
+    }
+    buffer.writeln('Date : $dateLine');
+    buffer.writeln('$nights ${nights == 1 ? "night" : "nights"}');
+    buffer.writeln('Package : $packageDetails');
+    for (final line in roomLines) {
+      buffer.writeln(line);
+    }
+    buffer.writeln('Total : LKR ${fmt.format(_totalAmount)}');
+    buffer.writeln('Advance : LKR ${fmt.format(_advanceAmount)}');
+    buffer.writeln('Remaining : LKR ${fmt.format(_remainingBalance)}');
+    return buffer.toString().trimRight();
+  }
+
+  String get packageDetails => _customizePackages
+      ? 'Custom package with varying meal plans'
+      : _packageType;
+
+  String _ordinalDate(DateTime d) {
+    final day = d.day;
+    final suffix = (day >= 11 && day <= 13)
+        ? 'th'
+        : (day % 10 == 1)
+            ? 'st'
+            : (day % 10 == 2)
+                ? 'nd'
+                : (day % 10 == 3)
+                    ? 'rd'
+                    : 'th';
+    return '$day$suffix ${DateFormat('MMMM').format(d)}';
+  }
+
+  void _showInvoiceReadyDialog(String message, String? pdfUrl) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.green.shade600),
+              const SizedBox(width: 8),
+              const Text('Invoice Ready'),
+            ],
+          ),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pdfUrl != null && kIsWeb) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.ios_share_rounded, size: 18),
+                        label: const Text('Share PDF'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final ok = await file_saver.sharePdfLast();
+                          if (!ok && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text(
+                                  'Sharing is not supported in this browser. Use Open PDF instead.',
+                                ),
+                                backgroundColor: Colors.orange.shade700,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (pdfUrl != null) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                        label: const Text('Open PDF'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.indigo,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => file_saver.openPdfUrl(pdfUrl),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  Text(
+                    'WHATSAPP MESSAGE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade600,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: SelectableText(
+                      message,
+                      style: const TextStyle(fontSize: 13, height: 1.4),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      label: const Text('Copy Message'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: message));
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Message copied to clipboard'),
+                            backgroundColor: Colors.green.shade600,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
