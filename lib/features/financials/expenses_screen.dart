@@ -4,6 +4,7 @@ import 'package:odon_booking/core/api/api_service.dart';
 import 'ViewEditSalariesExpensesScreen.dart';
 import 'package:odon_booking/shared/services/image_processor_service.dart';
 import 'package:odon_booking/shared/widgets/data_confirmation_dialog.dart';
+import 'bulk_import.dart';
 
 class ExpensesAndSalaryScreen extends StatefulWidget {
   @override
@@ -207,6 +208,40 @@ class _SalaryTabState extends State<SalaryTab> {
     }
   }
 
+  void _importFromPastedJson() async {
+    try {
+      final items = await showBulkImportPasteDialog(context);
+      if (items == null || items.isEmpty) return;
+      final result = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (_) => DataConfirmationDialog(data: items),
+      );
+      if (result != null) {
+        final salaryData  = result['salaryData']  as List<Map<String, dynamic>>? ?? [];
+        final expenseData = result['expenseData'] as List<Map<String, dynamic>>? ?? [];
+        if (salaryData.isNotEmpty)  await _saveBatchSalaries(salaryData);
+        if (expenseData.isNotEmpty) await _saveBatchExpenses(expenseData);
+        if (salaryData.isNotEmpty || expenseData.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Added ${salaryData.length} salary + ${expenseData.length} expense entries',
+              ),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red),
+      );
+    }
+  }
+
   void _clearForm() {
     _nameController.clear();
     _amountController.clear();
@@ -227,6 +262,10 @@ class _SalaryTabState extends State<SalaryTab> {
         children: [
           // Scan banner
           _ScanBanner(onScan: _processImageWithAI, label: 'Scan salary sheet from photo'),
+          const SizedBox(height: 10),
+
+          // Paste-JSON banner
+          _PasteBanner(onPaste: _importFromPastedJson, label: 'Paste month JSON from Claude'),
           const SizedBox(height: 20),
 
           // Section label
@@ -573,6 +612,41 @@ class _ExpensesTabState extends State<ExpensesTab> {
     }
   }
 
+  void _importFromPastedJson() async {
+    try {
+      final items = await showBulkImportPasteDialog(context);
+      if (items == null || items.isEmpty) return;
+      final result = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (_) => DataConfirmationDialog(data: items),
+      );
+      if (result != null) {
+        final salaryData  = result['salaryData']  as List<Map<String, dynamic>>? ?? [];
+        final expenseData = result['expenseData'] as List<Map<String, dynamic>>? ?? [];
+        if (salaryData.isNotEmpty)  await _saveBatchSalaries(salaryData);
+        if (expenseData.isNotEmpty) await _saveBatchExpenses(expenseData);
+        if (salaryData.isNotEmpty || expenseData.isNotEmpty) {
+          _loadExpenseNames();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Added ${salaryData.length} salary + ${expenseData.length} expense entries',
+              ),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red),
+      );
+    }
+  }
+
   void _clearForm() {
     _nameController.clear();
     _amountController.clear();
@@ -612,6 +686,10 @@ class _ExpensesTabState extends State<ExpensesTab> {
         children: [
           // Scan banner
           _ScanBanner(onScan: _processImageWithAI, label: 'Scan expense receipt from photo'),
+          const SizedBox(height: 10),
+
+          // Paste-JSON banner
+          _PasteBanner(onPaste: _importFromPastedJson, label: 'Paste month JSON from Claude'),
           const SizedBox(height: 20),
 
           _sectionLabel('Add Expense Record'),
@@ -809,6 +887,60 @@ class _ScanBanner extends StatelessWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: const Text('Scan', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PasteBanner extends StatelessWidget {
+  final VoidCallback onPaste;
+  final String label;
+  const _PasteBanner({required this.onPaste, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.teal.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.teal.shade100),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.teal.shade100,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.content_paste_rounded, color: Colors.teal.shade700, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.teal.shade800,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onPaste,
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Paste', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.w600)),
           ),
         ],
       ),
